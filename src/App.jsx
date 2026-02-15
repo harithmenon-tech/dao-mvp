@@ -349,12 +349,54 @@ function summarizeData(datasets, fullScan = false) {
   return summary;
 }
 
+function parseFindings(text) {
+  if (!text) return [];
+  const findings = [];
+  const parts = text.split(/(?=FINDING\s+\d+)/i);
+  parts.forEach((section) => {
+    if (!section.trim() || !section.match(/^FINDING\s+\d+/i)) return;
+    const getField = (label) => {
+      const upper = section.toUpperCase();
+      const searchLabel = label.toUpperCase() + ":";
+      const idx = upper.indexOf(searchLabel);
+      if (idx === -1) return "";
+      const after = section.slice(idx + searchLabel.length);
+      return after.split("\n")[0].trim();
+    };
+    const numMatch = section.match(/FINDING\s+(\d+)/i);
+    const severity = getField("SEVERITY");
+    const tierMatch = severity.match(/Tier\s*(\d)/i);
+    const tier = tierMatch ? tierMatch[1] : "2";
+    const impact = getField("IMPACT");
+    const amounts = [...(impact.match(/[\d,]+/g) || [])].map(n => parseInt(n.replace(/,/g, ""))).filter(n => n > 999);
+    const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+    const dailyCost = maxAmount > 0 ? Math.round(maxAmount / 30) : 0;
+    const finding = {
+      id: numMatch ? parseInt(numMatch[1]) : findings.length + 1,
+      pattern: getField("PATTERN"),
+      evidence: getField("EVIDENCE"),
+      recurrence: getField("RECURRENCE"),
+      impact,
+      rootCause: getField("ROOT CAUSE"),
+      fix: getField("FIX"),
+      tier,
+      confidence: getField("CONFIDENCE"),
+      assumptions: getField("ASSUMPTIONS"),
+      maxAmount,
+      dailyCost
+    };
+    if (finding.pattern) findings.push(finding);
+  });
+  return findings;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ICONS (inline SVG for zero deps)
 // ═══════════════════════════════════════════════════════════════
 const Icon = ({ d, size = 20, color = "currentColor", ...props }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{d}</svg>
 );
+const DashboardIcon = (p) => <Icon {...p} d={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>}/>;
 const ChatIcon = (p) => <Icon {...p} d={<><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></>}/>;
 const ScanIcon = (p) => <Icon {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>;
 const BookIcon = (p) => <Icon {...p} d={<><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></>}/>;
@@ -366,6 +408,95 @@ const XIcon = (p) => <Icon {...p} d={<><path d="M18 6 6 18M6 6l12 12"/></>}/>;
 const CheckIcon = (p) => <Icon {...p} d={<><polyline points="20 6 9 17 4 12"/></>}/>;
 const UploadIcon = (p) => <Icon {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>}/>;
 const PaperclipIcon = (p) => <Icon {...p} d={<><path d="m21.44 11.05-9.19 9.19a6 6 0 01-8.49-8.49l8.57-8.57A4 4 0 1118 8.84l-8.59 8.57a2 2 0 01-2.83-2.83l8.49-8.48"/></>}/>;
+
+function HealthRing({ resolved, total }) {
+  const pct = total > 0 ? resolved / total : 0;
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const strokeColor = pct >= 0.7 ? "#10B981" : pct >= 0.3 ? "#F59E0B" : "#EF4444";
+  return (
+    <svg width={90} height={90} viewBox="0 0 90 90">
+      <circle cx={45} cy={45} r={r} fill="none" stroke="#1E293B" strokeWidth={10}/>
+      <circle cx={45} cy={45} r={r} fill="none" stroke={strokeColor}
+        strokeWidth={10} strokeDasharray={`${circ * pct} ${circ}`}
+        strokeLinecap="round" transform="rotate(-90 45 45)"/>
+      <text x={45} y={41} textAnchor="middle" fill="#E2E8F0" fontSize={15} fontWeight="700" fontFamily="DM Sans, sans-serif">{Math.round(pct * 100)}%</text>
+      <text x={45} y={56} textAnchor="middle" fill="#94A3B8" fontSize={8} fontFamily="DM Sans, sans-serif">RESOLVED</text>
+    </svg>
+  );
+}
+
+function FindingCard({ finding, resolved, onToggle }) {
+  const [expanded, setExpanded] = useState(false);
+  const tierColor = finding.tier === "3" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
+  const tierLabel = finding.tier === "3" ? "TIER 3 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 1 — LOW";
+  const extractAmount = () => {
+    const m = finding.impact.match(/RM[\s]?[\d,\s]+(?:[–\-][\s]?RM?[\s]?[\d,]+)?/i);
+    return m ? m[0].trim() : finding.maxAmount > 0 ? `RM ${finding.maxAmount.toLocaleString()}` : null;
+  };
+  return (
+    <div style={{
+      background: resolved ? "#1E293B60" : "#111827",
+      border: `1px solid ${resolved ? "#1E3A5F" : tierColor}40`,
+      borderLeft: `4px solid ${resolved ? "#94A3B8" : tierColor}`,
+      borderRadius: 12, padding: 20, marginBottom: 12,
+      opacity: resolved ? 0.65 : 1, transition: "all 0.2s"
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>FINDING {finding.id}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${tierColor}20`, color: tierColor }}>{tierLabel}</span>
+          {resolved && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#10B98120", color: "#10B981" }}>✓ RESOLVED</span>}
+        </div>
+        <button onClick={() => onToggle(finding.id)} style={{
+          background: resolved ? "#10B98115" : "#0EA5E915",
+          border: `1px solid ${resolved ? "#10B981" : "#0EA5E9"}40`,
+          borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 600,
+          color: resolved ? "#10B981" : "#0EA5E9", cursor: "pointer", flexShrink: 0
+        }}>{resolved ? "✓ Resolved" : "Mark Resolved"}</button>
+      </div>
+      <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: "#E2E8F0" }}>{finding.pattern}</p>
+      {finding.maxAmount > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: `${tierColor}10`, border: `1px solid ${tierColor}25`, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>FINANCIAL EXPOSURE</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: tierColor }}>{extractAmount()}</div>
+          </div>
+          {finding.dailyCost > 0 && (
+            <div style={{ background: "#EF444410", border: "1px solid #EF444425", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>COST PER DAY UNRESOLVED</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#EF4444" }}>RM {finding.dailyCost.toLocaleString()}</div>
+            </div>
+          )}
+        </div>
+      )}
+      {finding.fix && (
+        <div style={{ background: "#10B98110", border: "1px solid #10B98125", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginBottom: 6 }}>RECOMMENDED ACTION</div>
+          <div style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.55 }}>{finding.fix}</div>
+        </div>
+      )}
+      <button onClick={() => setExpanded(!expanded)} style={{
+        background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 12, padding: 0, display: "flex", alignItems: "center", gap: 4
+      }}>{expanded ? "▲ Hide details" : "▼ Show evidence & root cause"}</button>
+      {expanded && (
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "EVIDENCE", val: finding.evidence },
+            { label: "ROOT CAUSE", val: finding.rootCause },
+            { label: "CONFIDENCE", val: finding.confidence },
+            { label: "RECURRENCE", val: finding.recurrence }
+          ].filter(f => f.val).map(({ label, val }) => (
+            <div key={label} style={{ background: "#1E293B", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 12, color: "#E2E8F0", lineHeight: 1.5 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN APP
@@ -393,6 +524,8 @@ export default function App() {
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
   const [chatFiles, setChatFiles] = useState([]);
+  const [resolvedFindings, setResolvedFindings] = useState(store.get("dao-resolved-findings") || []);
+  const [parsedFindings, setParsedFindings] = useState([]);
   const [decisionProfile, setDecisionProfile] = useState(store.get("dao-decision-profile") || null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [autoLogDecision, setAutoLogDecision] = useState(null);
@@ -435,6 +568,13 @@ export default function App() {
   useEffect(() => { if (journal.length) store.set("dao-journal", journal); }, [journal]);
   useEffect(() => { if (chatMsgs.length) store.set("dao-chat", chatMsgs); }, [chatMsgs]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
+  useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
+  useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
+
+  const toggleResolvedFinding = (id) => {
+    setResolvedFindings(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   useEffect(() => { if (datasets.length) store.set("dao-datasets-meta", datasets.map(d => ({ name: d.name, type: d.type, rowCount: d.totalRows || d.rowCount || 0 }))); }, [datasets]);
 
   // Auto-scroll chat
@@ -799,9 +939,13 @@ export default function App() {
     setChatMsgs([]);
     setOnboardStep(0);
     setOb({ name: "", org: "", industry: "", region: "asean", style: "" });
+    store.del("dao-resolved-findings");
+    setResolvedFindings([]);
+    setParsedFindings([]);
   };
 
   const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "chat", label: "Chat", icon: ChatIcon },
     { id: "scan", label: "Scan", icon: ScanIcon },
     { id: "journal", label: "Journal", icon: BookIcon, badge: journal.length || null },
@@ -1003,6 +1147,77 @@ export default function App() {
             </div>
           )}
 
+          {/* ═══════ DASHBOARD VIEW ═══════ */}
+          {view === "dashboard" && (
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#E2E8F0" }}>Command Centre</h2>
+                <p style={{ color: "#94A3B8", fontSize: 12, margin: 0 }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: "ACTIVE FINDINGS", value: parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length, color: parsedFindings.filter(f => !resolvedFindings.includes(f.id) && f.tier === "3").length > 0 ? "#EF4444" : "#F59E0B", sub: `${resolvedFindings.length} resolved` },
+                  { label: "FINANCIAL EXPOSURE", value: `RM ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
+                  { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "pending").length} pending review` },
+                  { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.reviewDate) < new Date() && j.status !== "resolved").length, color: "#F59E0B", sub: "need attention" }
+                ].map((stat, i) => (
+                  <div key={i} style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16 }}>
+                    <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>{stat.label}</div>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: stat.color, marginBottom: 4 }}>{stat.value}</div>
+                    <div style={{ fontSize: 11, color: "#94A3B8" }}>{stat.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 12, marginBottom: 16 }}>
+                <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <HealthRing resolved={resolvedFindings.length} total={parsedFindings.length}/>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8, textAlign: "center", whiteSpace: "nowrap" }}>{resolvedFindings.length}/{parsedFindings.length} findings</div>
+                </div>
+                <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "#0EA5E9", marginBottom: 12 }}>TOP PRIORITIES THIS WEEK</div>
+                  {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).sort((a, b) => parseInt(b.tier) - parseInt(a.tier) || b.dailyCost - a.dailyCost).slice(0, 3).map((f, i, arr) => (
+                    <div key={f.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: i < arr.length - 1 ? 10 : 0, marginBottom: i < arr.length - 1 ? 10 : 0, borderBottom: i < arr.length - 1 ? "1px solid #1E3A5F" : "none" }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981"}20`, color: f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", marginBottom: 2, lineHeight: 1.3 }}>{f.pattern}</div>
+                        {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>RM {f.dailyCost.toLocaleString()} / day</div>}
+                      </div>
+                      <button onClick={() => setView("scan")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View →</button>
+                    </div>
+                  ))}
+                  {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length === 0 && (
+                    <div style={{ fontSize: 13, color: "#94A3B8", padding: "16px 0", textAlign: "center" }}>
+                      {parsedFindings.length > 0 ? "🎉 All findings resolved!" : "Run an Enterprise Scan to populate priorities."}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {journal.length > 0 && (
+                <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "#0EA5E9" }}>RECENT DECISIONS</div>
+                    <button onClick={() => setView("journal")} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 11 }}>View all →</button>
+                  </div>
+                  {journal.slice(0, 3).map((entry, i) => (
+                    <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, marginBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, borderBottom: i < Math.min(journal.length, 3) - 1 ? "1px solid #1E3A5F" : "none" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: entry.tier === "3" ? "#EF444420" : entry.tier === "2" ? "#F59E0B20" : "#10B98120", color: entry.tier === "3" ? "#EF4444" : entry.tier === "2" ? "#F59E0B" : "#10B981", flexShrink: 0 }}>T{entry.tier}</span>
+                      <div style={{ flex: 1, fontSize: 13, color: "#E2E8F0" }}>{entry.statement}</div>
+                      <div style={{ fontSize: 11, color: "#94A3B8", flexShrink: 0 }}>{entry.date}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {parsedFindings.length === 0 && datasets.length === 0 && (
+                <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 32, textAlign: "center" }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: "#E2E8F0" }}>Start Your First Scan</h3>
+                  <p style={{ color: "#94A3B8", fontSize: 13, margin: "0 0 16px" }}>Upload operational data to see findings, financial exposure, and priorities here.</p>
+                  <button onClick={() => setView("data")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data →</button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ═══════ SCAN VIEW ═══════ */}
           {view === "scan" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
@@ -1042,9 +1257,22 @@ export default function App() {
                       Scan encountered an error. {apiStatus === "demo" ? "This is normal in demo mode — connect your API key for real scans." : "Check your API key and try again."}
                     </div>
                   )}
-                  <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>
-                    {scanResults.text}
-                  </div>
+                  {parsedFindings.length > 0 ? (
+                    <div>
+                      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, color: "#94A3B8" }}>{parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length} active</span>
+                        <span style={{ fontSize: 12, color: "#10B981" }}>{resolvedFindings.length} resolved</span>
+                        <span style={{ fontSize: 12, color: "#EF4444" }}>RM {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()} total exposure</span>
+                      </div>
+                      {[...parsedFindings].sort((a, b) => parseInt(b.tier) - parseInt(a.tier)).map(f => (
+                        <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding}/>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1E3A5F", padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>
+                      {scanResults.text}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
