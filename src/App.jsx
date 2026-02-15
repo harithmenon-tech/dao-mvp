@@ -351,43 +351,53 @@ function summarizeData(datasets, fullScan = false) {
 
 function parseFindings(text) {
   if (!text) return [];
-  const findings = [];
-  const parts = text.split(/(?=FINDING\s+\d+)/i);
-  parts.forEach((section) => {
-    if (!section.trim() || !section.match(/^FINDING\s+\d+/i)) return;
-    const getField = (label) => {
-      const upper = section.toUpperCase();
-      const searchLabel = label.toUpperCase() + ":";
-      const idx = upper.indexOf(searchLabel);
-      if (idx === -1) return "";
-      const after = section.slice(idx + searchLabel.length);
-      return after.split("\n")[0].trim();
-    };
-    const numMatch = section.match(/FINDING\s+(\d+)/i);
-    const severity = getField("SEVERITY");
-    const tierMatch = severity.match(/Tier\s*(\d)/i);
-    const tier = tierMatch ? tierMatch[1] : "2";
-    const impact = getField("IMPACT");
-    const amounts = [...(impact.match(/[\d,]+/g) || [])].map(n => parseInt(n.replace(/,/g, ""))).filter(n => n > 999);
-    const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
-    const dailyCost = maxAmount > 0 ? Math.round(maxAmount / 30) : 0;
-    const finding = {
-      id: numMatch ? parseInt(numMatch[1]) : findings.length + 1,
-      pattern: getField("PATTERN"),
-      evidence: getField("EVIDENCE"),
-      recurrence: getField("RECURRENCE"),
-      impact,
-      rootCause: getField("ROOT CAUSE"),
-      fix: getField("FIX"),
-      tier,
-      confidence: getField("CONFIDENCE"),
-      assumptions: getField("ASSUMPTIONS"),
-      maxAmount,
-      dailyCost
-    };
-    if (finding.pattern) findings.push(finding);
-  });
-  return findings;
+  // Don't try to parse if text contains errors or doesn't have FINDING pattern
+  if (/^Error/i.test(text) || !/FINDING\s+\d+/i.test(text)) return [];
+
+  try {
+    const findings = [];
+    const parts = text.split(/(?=FINDING\s+\d+)/i);
+    if (!parts || parts.length === 0) return [];
+
+    parts.forEach((section) => {
+      if (!section.trim() || !section.match(/^FINDING\s+\d+/i)) return;
+      const getField = (label) => {
+        const upper = section.toUpperCase();
+        const searchLabel = label.toUpperCase() + ":";
+        const idx = upper.indexOf(searchLabel);
+        if (idx === -1) return "";
+        const after = section.slice(idx + searchLabel.length);
+        return after.split("\n")[0].trim();
+      };
+      const numMatch = section.match(/FINDING\s+(\d+)/i);
+      const severity = getField("SEVERITY");
+      const tierMatch = severity.match(/Tier\s*(\d)/i);
+      const tier = tierMatch ? tierMatch[1] : "2";
+      const impact = getField("IMPACT");
+      const amounts = [...(impact.match(/[\d,]+/g) || [])].map(n => parseInt(n.replace(/,/g, ""))).filter(n => n > 999);
+      const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+      const dailyCost = maxAmount > 0 ? Math.round(maxAmount / 30) : 0;
+      const finding = {
+        id: numMatch ? parseInt(numMatch[1]) : findings.length + 1,
+        pattern: getField("PATTERN"),
+        evidence: getField("EVIDENCE"),
+        recurrence: getField("RECURRENCE"),
+        impact,
+        rootCause: getField("ROOT CAUSE"),
+        fix: getField("FIX"),
+        tier,
+        confidence: getField("CONFIDENCE"),
+        assumptions: getField("ASSUMPTIONS"),
+        maxAmount,
+        dailyCost
+      };
+      if (finding.pattern) findings.push(finding);
+    });
+    return findings;
+  } catch (err) {
+    console.error("Error parsing findings:", err);
+    return [];
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
