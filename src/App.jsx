@@ -395,6 +395,7 @@ export default function App() {
   const [chatFiles, setChatFiles] = useState([]);
   const [decisionProfile, setDecisionProfile] = useState(store.get("dao-decision-profile") || null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [autoLogDecision, setAutoLogDecision] = useState(null);
 
   // Health check — determines if live API is available
   useEffect(() => {
@@ -667,6 +668,79 @@ export default function App() {
     setStreaming(false);
   };
 
+  // ═══════════ AUTO-LOG DECISION DETECTION ═══════════
+  const detectDecisionInMessage = (content) => {
+    const decisionPatterns = [
+      /I recommend|recommend that you|my recommendation/i,
+      /you should decide|decision is|suggest deciding/i,
+      /approved|approving|approve/i,
+      /rejected|rejecting|reject/i,
+      /postponed|postponing|postpone/i,
+      /proceeding with|go with|moving forward with/i,
+      /tier [123]|severity/i,
+      /FIX:|RECOMMENDATION:|DECISION:/i
+    ];
+    return decisionPatterns.some(pattern => pattern.test(content));
+  };
+
+  const extractDecisionFromConversation = (msgIndex) => {
+    const aiMsg = chatMsgs[msgIndex];
+    const userMsg = msgIndex > 0 ? chatMsgs[msgIndex - 1] : null;
+
+    // Try to extract decision statement from AI response
+    let statement = "";
+    const recommendMatch = aiMsg.content.match(/(?:recommend|suggest|decision is|approved?|rejected?)[:\s]+([^.\n]{20,200})/i);
+    if (recommendMatch) {
+      statement = recommendMatch[1].trim();
+    } else {
+      // Fallback: use first substantial sentence
+      const sentences = aiMsg.content.split(/[.!?]\s+/);
+      statement = sentences.find(s => s.length > 20 && s.length < 200) || "";
+    }
+
+    // Extract evidence from context
+    const evidenceMatch = aiMsg.content.match(/(?:evidence|data shows?|based on)[:\s]+([^.\n]{20,300})/i);
+    const evidence = evidenceMatch ? evidenceMatch[1].trim() : "";
+
+    // Extract assumptions
+    const assumptionMatch = aiMsg.content.match(/(?:assum(?:e|ing|ption))[:\s]+([^.\n]{20,300})/i);
+    const assumptions = assumptionMatch ? assumptionMatch[1].trim() : "";
+
+    // Detect tier from severity language
+    let tier = "2";
+    if (/critical|urgent|tier 3|high severity/i.test(aiMsg.content)) tier = "3";
+    if (/low impact|minor|tier 1/i.test(aiMsg.content)) tier = "1";
+
+    // Detect type from context
+    let type = "technical";
+    if (/people|team|hiring|cultural|leadership/i.test(aiMsg.content)) type = "human";
+    if (/political|stakeholder|board|regulatory/i.test(aiMsg.content)) type = "political";
+    if (/culture|values|norms|behavior/i.test(aiMsg.content)) type = "cultural";
+
+    // Detect confidence
+    let confidence = "moderate";
+    if (/high confidence|very confident|certain/i.test(aiMsg.content)) confidence = "high";
+    if (/low confidence|uncertain|unclear/i.test(aiMsg.content)) confidence = "low";
+
+    return {
+      statement: statement.slice(0, 200) || "Decision from conversation",
+      tier,
+      type,
+      evidence: evidence.slice(0, 300),
+      assumptions: assumptions.slice(0, 300),
+      confidence,
+      expected: "",
+      reviewDays: 30
+    };
+  };
+
+  const handleLogDecisionFromChat = (msgIndex) => {
+    const extracted = extractDecisionFromConversation(msgIndex);
+    setJf(extracted);
+    setShowJournalForm(true);
+    setView("journal");
+  };
+
   // ═══════════ JOURNAL ═══════════
   const addJournalEntry = async () => {
     const entry = {
@@ -833,7 +907,7 @@ export default function App() {
                 )}
                 {chatMsgs.map((msg, i) => (
                   <div key={i} style={{
-                    display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                    display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start",
                     marginBottom: 16, maxWidth: "100%"
                   }}>
                     <div style={{
@@ -846,6 +920,38 @@ export default function App() {
                     }}>
                       {msg.content || (streaming && i === chatMsgs.length - 1 ? <span style={{ color: TEXT_DIM }}>Thinking...</span> : "")}
                     </div>
+                    {/* Auto-Log Decision Button for AI messages with decisions */}
+                    {msg.role === "assistant" && msg.content && detectDecisionInMessage(msg.content) && !streaming && (
+                      <button
+                        onClick={() => handleLogDecisionFromChat(i)}
+                        style={{
+                          marginTop: 8,
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          background: `${ACCENT}15`,
+                          border: `1px solid ${ACCENT}40`,
+                          borderRadius: 8,
+                          color: ACCENT,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontFamily: "'DM Sans', sans-serif",
+                          transition: "all 0.2s"
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${ACCENT}25`;
+                          e.currentTarget.style.borderColor = ACCENT;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = `${ACCENT}15`;
+                          e.currentTarget.style.borderColor = `${ACCENT}40`;
+                        }}
+                      >
+                        📝 Log to Journal
+                      </button>
+                    )}
                   </div>
                 ))}
                 <div ref={chatEnd}/>
