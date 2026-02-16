@@ -18,6 +18,7 @@ const TEXT_DIM = "#94A3B8";
 const GREEN = "#10B981";
 const AMBER = "#F59E0B";
 const RED = "#EF4444";
+const GOLD = "#F59E0B";
 
 // Demo mode starts true (safe default). Gets flipped to false when API health check passes.
 let DEMO_MODE = true;
@@ -97,6 +98,84 @@ SCAN SUMMARY
 - Total financial exposure identified
 - Top 3 priority actions
 - Data gaps that limit the analysis`;
+
+const INDUSTRY_UPLOAD_GUIDANCE = {
+  "Biotech": {
+    title: "Biotech — Revenue Intelligence Data",
+    items: ["Clinical outcome datasets (anonymised)", "Doctor interaction logs or CRM exports", "Research partnership agreements", "Product pricing history and discount records", "Regulatory approval timelines and cost records", "Competitor pricing benchmarks if available"]
+  },
+  "Healthcare": {
+    title: "Healthcare — Revenue Intelligence Data",
+    items: ["Patient pathway and service utilisation data", "Referral source and conversion records", "Pricing schedules and insurance reimbursement rates", "Unutilised equipment or facility capacity reports", "Staff skill and certification records", "Partnership or supplier contracts"]
+  },
+  "Construction": {
+    title: "Construction — Revenue Intelligence Data",
+    items: ["Project cost vs budget variance history", "Subcontractor performance and payment records", "Material procurement and waste logs", "Delay and variation order history", "Client satisfaction or defect liability records", "Equipment utilisation and idle time reports"]
+  },
+  "Manufacturing": {
+    title: "Manufacturing — Revenue Intelligence Data",
+    items: ["Production yield and defect rate history", "Machine utilisation and downtime logs", "Raw material cost and supplier performance data", "Customer order patterns and demand forecasts", "Warranty claim and return records", "Excess inventory and obsolescence reports"]
+  },
+  "Transport": {
+    title: "Supply Chain — Revenue Intelligence Data",
+    items: ["Supplier lead time and reliability records", "Inventory turnover and stockout history", "Freight cost and carrier performance data", "Order fulfilment cycle time reports", "Returns and reverse logistics data", "Customer delivery SLA compliance records"]
+  },
+  "Property": {
+    title: "Property Development — Revenue Intelligence Data",
+    items: ["Project sales velocity and pricing by unit type", "Buyer profile and source-of-buyer data", "Construction cost vs sales price margin history", "Unsold inventory aging reports", "Rental yield data for completed projects", "Agent commission and channel performance records"]
+  },
+  "Financial": {
+    title: "Financial Services — Revenue Intelligence Data",
+    items: ["Product cross-sell and upsell conversion records", "Client lifetime value and churn history", "Fee schedule and discount approval logs", "Dormant account or underutilised product data", "Relationship manager activity and portfolio reports", "Competitor product benchmarks if available"]
+  },
+  "Technology": {
+    title: "Technology — Revenue Intelligence Data",
+    items: ["Product usage and feature adoption logs", "Customer support ticket categories and volume", "Pricing tier and upgrade/downgrade history", "Partner or reseller performance records", "Churn reasons and win/loss interview data", "API or integration usage data"]
+  },
+  "default": {
+    title: "Revenue Intelligence — Recommended Data",
+    items: ["Customer contracts and pricing history", "Sales and revenue records by product or service", "Customer interaction and support logs", "Supplier and partner agreements", "Operational cost and margin data", "Any market or competitor benchmarks available"]
+  }
+};
+
+const REVENUE_SCAN_PROMPT = `You are running a Revenue Intelligence Scan. Your mandate is different from an operational scan. You are NOT looking for problems. You are looking for MONEY LEFT ON THE TABLE — data assets, relationships, service gaps, whitelabel opportunities, and pricing leakage that represent untapped revenue for this organisation.
+
+Scan ALL uploaded data for these 5 revenue opportunity categories:
+
+1. DATA ASSETS: Unique data this organisation owns that partners, regulators, researchers, or competitors would pay for.
+2. RELATIONSHIP VALUE: Under-monetised customer, partner, supplier, or ecosystem relationships.
+3. SERVICE GAPS: Places where customers are paying for workarounds this organisation could solve with a product or service.
+4. WHITELABEL POTENTIAL: Internal processes, tools, or knowledge that could be packaged and sold to others in the same industry.
+5. PRICING LEAKAGE: Places where value is being delivered but not charged for, or discounts applied without justification.
+
+INDUSTRY-SPECIFIC LENS:
+— Biotech: Clinical data licensing, research partnerships, doctor-to-patient relationship monetisation.
+— Healthcare: Pathway data value, referral network monetisation, premium service tiers.
+— Construction: Project intelligence data, subcontractor network value, methodology whitelabelling.
+— Manufacturing: Yield data benchmarking, supplier intelligence, excess capacity monetisation.
+— Supply Chain/Logistics: Route and supplier intelligence, fulfilment benchmarking, value-added service gaps.
+— Property Development: Buyer data value, channel performance intelligence, inventory yield optimisation.
+— Financial Services: Cross-sell data patterns, fee recovery, dormant relationship reactivation.
+— Technology: Usage data licensing, API monetisation, feature-to-tier upgrade triggers.
+
+For EVERY opportunity found, output in this EXACT format:
+
+OPPORTUNITY [number]
+CATEGORY: [Data Assets / Relationship Value / Service Gap / Whitelabel Potential / Pricing Leakage]
+PATTERN: [what the opportunity is — one clear sentence]
+EVIDENCE: [specific data points from uploaded files with values where available]
+REVENUE POTENTIAL: [estimated value in currency — give a range, show your working]
+TIMEFRAME: [Quick Win (0-90 days) / Medium Term (3-12 months) / Strategic (12+ months)]
+ACTION: [the single most important next step to capture this opportunity]
+CONFIDENCE: [HIGH / MODERATE / LOW] — [one-line reasoning]
+ASSUMPTIONS: [list, flagged as data-backed or inferred]
+
+After all opportunities provide:
+REVENUE INTELLIGENCE SUMMARY
+— Total opportunities identified
+— Total revenue potential range
+— Top 3 quick wins
+— Data gaps that would sharpen this analysis`;
 
 const STYLE_PROMPTS = {
   direct: "Communication style: DIRECT. Lead with the problem. State impact in numbers. Two options max. No softening. Ask for a decision.",
@@ -349,6 +428,40 @@ function summarizeData(datasets, fullScan = false) {
   return summary;
 }
 
+function parseRevenueFindings(text) {
+  if (!text) return [];
+  const opportunities = [];
+  const parts = text.split(/(?=OPPORTUNITY\s+\d+)/i);
+  parts.forEach((section) => {
+    if (!section.trim() || !section.match(/^OPPORTUNITY\s+\d+/i)) return;
+    const getField = (label) => {
+      const upper = section.toUpperCase();
+      const idx = upper.indexOf(label.toUpperCase() + ":");
+      if (idx === -1) return "";
+      return section.slice(idx + label.length + 1).split("\n")[0].trim();
+    };
+    const numMatch = section.match(/OPPORTUNITY\s+(\d+)/i);
+    const potential = getField("REVENUE POTENTIAL");
+    const amounts = [...(potential.match(/[\d,]+/g) || [])].map(n => parseInt(n.replace(/,/g, ""))).filter(n => n > 999);
+    const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+    const timeframe = getField("TIMEFRAME");
+    const opp = {
+      id: numMatch ? parseInt(numMatch[1]) : opportunities.length + 1,
+      category: getField("CATEGORY"),
+      pattern: getField("PATTERN"),
+      evidence: getField("EVIDENCE"),
+      potential, timeframe,
+      action: getField("ACTION"),
+      confidence: getField("CONFIDENCE"),
+      assumptions: getField("ASSUMPTIONS"),
+      maxAmount,
+      isQuickWin: /quick win|0.90|0–90/i.test(timeframe)
+    };
+    if (opp.pattern) opportunities.push(opp);
+  });
+  return opportunities;
+}
+
 function parseFindings(text) {
   if (!text) return [];
   // Don't try to parse if text contains errors or doesn't have FINDING pattern
@@ -418,6 +531,110 @@ const XIcon = (p) => <Icon {...p} d={<><path d="M18 6 6 18M6 6l12 12"/></>}/>;
 const CheckIcon = (p) => <Icon {...p} d={<><polyline points="20 6 9 17 4 12"/></>}/>;
 const UploadIcon = (p) => <Icon {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>}/>;
 const PaperclipIcon = (p) => <Icon {...p} d={<><path d="m21.44 11.05-9.19 9.19a6 6 0 01-8.49-8.49l8.57-8.57A4 4 0 1118 8.84l-8.59 8.57a2 2 0 01-2.83-2.83l8.49-8.48"/></>}/>;
+const ClipboardIcon = (p) => <Icon {...p} d={<><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></>}/>;
+
+function RevenueCard({ opp }) {
+  const [expanded, setExpanded] = useState(false);
+  const catColors = { "Data Assets": "#A78BFA", "Relationship Value": "#0EA5E9", "Service Gap": "#10B981", "Whitelabel Potential": "#F59E0B", "Pricing Leakage": "#EC4899" };
+  const catColor = catColors[opp.category] || "#F59E0B";
+  const timeframeColor = opp.isQuickWin ? "#10B981" : /medium/i.test(opp.timeframe) ? "#0EA5E9" : "#A78BFA";
+  return (
+    <div style={{ background: "#111827", border: `1px solid ${catColor}40`, borderLeft: `4px solid ${catColor}`, borderRadius: 12, padding: 20, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>OPP {opp.id}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${catColor}20`, color: catColor }}>{opp.category || "Opportunity"}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${timeframeColor}20`, color: timeframeColor }}>{opp.isQuickWin ? "⚡ Quick Win" : /medium/i.test(opp.timeframe) ? "Medium Term" : "Strategic"}</span>
+      </div>
+      <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: "#E2E8F0" }}>{opp.pattern}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+        <div style={{ background: `${catColor}10`, border: `1px solid ${catColor}25`, borderRadius: 10, padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>REVENUE POTENTIAL</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: catColor }}>{opp.maxAmount > 0 ? `RM ${opp.maxAmount.toLocaleString()}` : "See details"}</div>
+        </div>
+        <div style={{ background: "#10B98110", border: "1px solid #10B98125", borderRadius: 10, padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>TIMEFRAME</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: timeframeColor }}>{opp.timeframe.split("(")[0].trim() || "Review needed"}</div>
+        </div>
+      </div>
+      {opp.action && (
+        <div style={{ background: "#10B98110", border: "1px solid #10B98125", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginBottom: 6 }}>NEXT ACTION TO CAPTURE THIS</div>
+          <div style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.55 }}>{opp.action}</div>
+        </div>
+      )}
+      <button onClick={() => setExpanded(!expanded)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 12, padding: 0 }}>
+        {expanded ? "▲ Hide details" : "▼ Show evidence & assumptions"}
+      </button>
+      {expanded && (
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[{ label: "EVIDENCE", val: opp.evidence }, { label: "CONFIDENCE", val: opp.confidence }, { label: "ASSUMPTIONS", val: opp.assumptions }, { label: "FULL POTENTIAL", val: opp.potential }].filter(f => f.val).map(({ label, val }) => (
+            <div key={label} style={{ background: "#1E293B", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 12, color: "#E2E8F0", lineHeight: 1.5 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const WORKSTREAMS_DEFAULT = [
+  { name: "Leadership & Governance Alignment", status: "Not Started", pct: 0, note: "", updatedDate: "" },
+  { name: "Process Redesign & Documentation", status: "Not Started", pct: 0, note: "", updatedDate: "" },
+  { name: "Technology Setup & Integration", status: "Not Started", pct: 0, note: "", updatedDate: "" },
+  { name: "Staff Training & Adoption", status: "Not Started", pct: 0, note: "", updatedDate: "" },
+  { name: "Data Migration & Quality", status: "Not Started", pct: 0, note: "", updatedDate: "" },
+  { name: "Go-Live & Stabilisation", status: "Not Started", pct: 0, note: "", updatedDate: "" }
+];
+
+function ChangeProjectCard({ project, onUpdateWorkstream }) {
+  const [expanded, setExpanded] = useState(true);
+  const ragColor = { "Complete": "#10B981", "In Progress": "#0EA5E9", "At Risk": "#EF4444", "Not Started": "#94A3B8" };
+  const completedCount = project.workstreams.filter(w => w.status === "Complete").length;
+  const atRiskCount = project.workstreams.filter(w => w.status === "At Risk").length;
+  const overallPct = Math.round(project.workstreams.reduce((s, w) => s + w.pct, 0) / project.workstreams.length);
+  const overallStatus = atRiskCount > 0 ? "At Risk" : completedCount === project.workstreams.length ? "Complete" : completedCount > 0 ? "In Progress" : "Not Started";
+  return (
+    <div style={{ background: "#111827", border: `1px solid #1E3A5F`, borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
+      <div onClick={() => setExpanded(!expanded)} style={{ padding: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#E2E8F0", marginBottom: 4 }}>{project.name}</div>
+          <div style={{ fontSize: 11, color: "#94A3B8" }}>{project.description}</div>
+          <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, height: 6, background: "#1E293B", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${overallPct}%`, height: "100%", background: ragColor[overallStatus], borderRadius: 3, transition: "width 0.4s" }}/>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: ragColor[overallStatus], flexShrink: 0 }}>{overallPct}%</span>
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: `${ragColor[overallStatus]}20`, color: ragColor[overallStatus], fontWeight: 600 }}>{overallStatus}</span>
+          </div>
+        </div>
+        <span style={{ color: "#94A3B8", marginLeft: 12, fontSize: 14 }}>{expanded ? "▲" : "▼"}</span>
+      </div>
+      {expanded && (
+        <div style={{ borderTop: "1px solid #1E3A5F" }}>
+          {project.workstreams.map((ws, idx) => (
+            <div key={idx} style={{ padding: "12px 16px", borderBottom: idx < project.workstreams.length - 1 ? "1px solid #1E3A5F" : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: ragColor[ws.status], flexShrink: 0 }}/>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", flex: 1 }}>{ws.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: ragColor[ws.status] }}>{ws.pct}%</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                {["Not Started", "In Progress", "At Risk", "Complete"].map(s => (
+                  <button key={s} onClick={() => onUpdateWorkstream(project.id, idx, "status", s)} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 8, border: `1px solid ${ws.status === s ? ragColor[s] : "#1E3A5F"}`, background: ws.status === s ? `${ragColor[s]}20` : "transparent", color: ws.status === s ? ragColor[s] : "#94A3B8", cursor: "pointer", fontWeight: ws.status === s ? 700 : 400 }}>{s}</button>
+                ))}
+                <input type="range" min="0" max="100" value={ws.pct} onChange={e => onUpdateWorkstream(project.id, idx, "pct", parseInt(e.target.value))} style={{ width: 80, accentColor: ragColor[ws.status] }}/>
+              </div>
+              <input placeholder="Add a note..." value={ws.note} onChange={e => onUpdateWorkstream(project.id, idx, "note", e.target.value)} style={{ width: "100%", background: "#1E293B", border: "1px solid #1E3A5F", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "#E2E8F0", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}/>
+              {ws.updatedDate && <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>Updated: {ws.updatedDate}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function HealthRing({ resolved, total }) {
   const pct = total > 0 ? resolved / total : 0;
@@ -536,9 +753,15 @@ export default function App() {
   const [chatFiles, setChatFiles] = useState([]);
   const [resolvedFindings, setResolvedFindings] = useState(store.get("dao-resolved-findings") || []);
   const [parsedFindings, setParsedFindings] = useState([]);
+  const [scanMode, setScanMode] = useState("operational");
+  const [revenueFindings, setRevenueFindings] = useState([]);
+  const [revenueScanResults, setRevenueScanResults] = useState(store.get("dao-revenue-scan") || null);
   const [decisionProfile, setDecisionProfile] = useState(store.get("dao-decision-profile") || null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [autoLogDecision, setAutoLogDecision] = useState(null);
+  const [changeProjects, setChangeProjects] = useState(store.get("dao-change-projects") || []);
+  const [showChangeForm, setShowChangeForm] = useState(false);
+  const [cf, setCf] = useState({ name: "", description: "" });
 
   // Health check — determines if live API is available
   useEffect(() => {
@@ -579,7 +802,33 @@ export default function App() {
   useEffect(() => { if (chatMsgs.length) store.set("dao-chat", chatMsgs); }, [chatMsgs]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
+  useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
+  useEffect(() => { if (revenueScanResults) store.set("dao-revenue-scan", revenueScanResults); }, [revenueScanResults]);
   useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
+  useEffect(() => { store.set("dao-change-projects", changeProjects); }, [changeProjects]);
+
+  const addChangeProject = () => {
+    if (!cf.name) return;
+    const project = {
+      id: `CP-${Date.now().toString(36).toUpperCase()}`,
+      name: cf.name,
+      description: cf.description,
+      startDate: new Date().toISOString().split("T")[0],
+      workstreams: WORKSTREAMS_DEFAULT.map(w => ({ ...w }))
+    };
+    setChangeProjects(prev => [project, ...prev]);
+    setShowChangeForm(false);
+    setCf({ name: "", description: "" });
+  };
+
+  const updateWorkstream = (projectId, wsIdx, field, value) => {
+    setChangeProjects(prev => prev.map(p => {
+      if (p.id !== projectId) return p;
+      const updated = [...p.workstreams];
+      updated[wsIdx] = { ...updated[wsIdx], [field]: value, updatedDate: new Date().toISOString().split("T")[0] };
+      return { ...p, workstreams: updated };
+    }));
+  };
 
   const toggleResolvedFinding = (id) => {
     setResolvedFindings(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -732,17 +981,27 @@ export default function App() {
   const runScan = async () => {
     if (datasets.length === 0) return;
     setScanning(true);
-    setScanResults(null);
     setView("scan");
+    const dataSummary = summarizeData(datasets, true);
     try {
-      const dataSummary = summarizeData(datasets, true);
-      const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
-      const result = await callClaudeSync(sysPrompt, [
-        { role: "user", content: `Here is all the operational data from ${profile.org}. Run a full Enterprise Scan.\n\n${dataSummary}` }
-      ]);
-      setScanResults({ text: result, timestamp: new Date().toISOString() });
+      if (scanMode === "revenue") {
+        setRevenueScanResults(null);
+        const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${REVENUE_SCAN_PROMPT}`;
+        const result = await callClaudeSync(sysPrompt, [
+          { role: "user", content: `Here is data from ${profile.org} (Industry: ${profile.industry}). Run a full Revenue Intelligence Scan.\n\n${dataSummary}` }
+        ]);
+        setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
+      } else {
+        setScanResults(null);
+        const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
+        const result = await callClaudeSync(sysPrompt, [
+          { role: "user", content: `Here is all the operational data from ${profile.org}. Run a full Enterprise Scan.\n\n${dataSummary}` }
+        ]);
+        setScanResults({ text: result, timestamp: new Date().toISOString() });
+      }
     } catch (e) {
-      setScanResults({ text: `Error running scan: ${e.message}`, timestamp: new Date().toISOString(), error: true });
+      const errObj = { text: `Error running scan: ${e.message}`, timestamp: new Date().toISOString(), error: true };
+      scanMode === "revenue" ? setRevenueScanResults(errObj) : setScanResults(errObj);
     }
     setScanning(false);
   };
@@ -935,6 +1194,119 @@ export default function App() {
     }
   };
 
+  const generateBoardReport = async () => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pw = 210;
+      const margin = 20;
+      const usable = pw - margin * 2;
+      let y = 20;
+      const line = (text, size, bold, color) => {
+        doc.setFontSize(size);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(...(color || [226, 232, 240]));
+        if (Array.isArray(text)) {
+          text.forEach(t => { doc.text(t, margin, y); y += size * 0.45; });
+        } else {
+          doc.text(String(text), margin, y); y += size * 0.45;
+        }
+      };
+      const rule = (c) => { doc.setDrawColor(...(c || [30, 58, 95])); doc.line(margin, y, pw - margin, y); y += 5; };
+      const gap = (n) => { y += n || 4; };
+      // Background
+      doc.setFillColor(11, 17, 32);
+      doc.rect(0, 0, 210, 297, "F");
+      // Header
+      doc.setFillColor(17, 24, 39);
+      doc.rect(0, 0, 210, 28, "F");
+      line("DECISION ACCOUNTABILITY OS", 10, true, [14, 165, 233]);
+      gap(2);
+      line(`${profile.org}  |  ${profile.industry}  |  ${profile.region?.toUpperCase()}`, 8, false, [148, 163, 184]);
+      gap(2);
+      line(`Board Report  —  Generated ${new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" })}  —  ${profile.name}`, 8, false, [148, 163, 184]);
+      gap(6);
+      rule([14, 165, 233]);
+      // Section 1: Command Centre
+      line("1.  COMMAND CENTRE SUMMARY", 11, true, [14, 165, 233]);
+      gap(4);
+      const activeF = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
+      const totalExp = activeF.reduce((s, f) => s + f.maxAmount, 0);
+      const overdue = journal.filter(j => new Date(j.reviewDate) < new Date() && j.status !== "resolved").length;
+      line(`Active Findings: ${activeF.length}   |   Resolved: ${resolvedFindings.length}   |   Financial Exposure: RM ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
+      gap(2);
+      line(`Decisions Logged: ${journal.length}   |   Overdue Reviews: ${overdue}   |   Revenue Opportunities: ${revenueFindings.length}`, 9, false, [226, 232, 240]);
+      gap(6);
+      rule();
+      // Section 2: Top Operational Findings
+      if (parsedFindings.length > 0) {
+        line("2.  TOP OPERATIONAL FINDINGS", 11, true, [14, 165, 233]);
+        gap(4);
+        parsedFindings.slice(0, 5).forEach((f, i) => {
+          line(`${i + 1}.  [TIER ${f.tier}]  ${f.pattern}`, 9, false, [226, 232, 240]);
+          gap(1);
+          if (f.maxAmount > 0) { line(`     Exposure: RM ${f.maxAmount.toLocaleString()}  |  Daily cost: RM ${f.dailyCost.toLocaleString()}  |  ${resolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
+          if (f.fix) { line(`     Action: ${f.fix.substring(0, 90)}`, 8, false, [148, 163, 184]); }
+          gap(3);
+        });
+        rule();
+      }
+      // Section 3: Revenue Intelligence
+      if (revenueFindings.length > 0) {
+        line("3.  REVENUE OPPORTUNITIES", 11, true, [14, 165, 233]);
+        gap(4);
+        const totalRevPot = revenueFindings.reduce((s, o) => s + o.maxAmount, 0);
+        line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${revenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
+        gap(3);
+        revenueFindings.slice(0, 4).forEach((o, i) => {
+          line(`${i + 1}.  [${o.category}]  ${o.pattern}`, 9, false, [226, 232, 240]);
+          gap(1);
+          if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${o.timeframe?.split("(")[0].trim()}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
+          if (o.action) { line(`     Action: ${o.action.substring(0, 90)}`, 8, false, [148, 163, 184]); }
+          gap(3);
+        });
+        rule();
+      }
+      // Page 2 if needed
+      if (y > 220) { doc.addPage(); doc.setFillColor(11, 17, 32); doc.rect(0, 0, 210, 297, "F"); y = 20; }
+      // Section 4: Decisions
+      if (journal.length > 0) {
+        line("4.  RECENT DECISIONS", 11, true, [14, 165, 233]);
+        gap(4);
+        journal.slice(0, 5).forEach((j, i) => {
+          line(`${i + 1}.  [TIER ${j.tier}  |  ${j.type}]  ${j.statement}`, 9, false, [226, 232, 240]);
+          gap(1);
+          line(`     Date: ${j.date}  |  Status: ${j.status}  |  Review by: ${j.reviewDate}`, 8, false, [148, 163, 184]);
+          gap(3);
+        });
+        rule();
+      }
+      // Section 5: Change Tracker
+      if (changeProjects.length > 0) {
+        line("5.  IMPLEMENTATION PROGRESS", 11, true, [14, 165, 233]);
+        gap(4);
+        changeProjects.forEach(p => {
+          const pct = Math.round(p.workstreams.reduce((s, w) => s + w.pct, 0) / p.workstreams.length);
+          const atRisk = p.workstreams.filter(w => w.status === "At Risk").length;
+          line(`${p.name}  —  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
+          gap(2);
+          p.workstreams.forEach(w => {
+            line(`     ${w.name}:  ${w.status}  (${w.pct}%)${w.note ? "  — " + w.note.substring(0, 50) : ""}`, 8, false, [148, 163, 184]);
+            gap(1);
+          });
+          gap(4);
+        });
+        rule();
+      }
+      // Footer
+      gap(4);
+      line("Confidential  |  Generated by Decision Accountability OS  |  Powered by 30GENS", 7, false, [148, 163, 184]);
+      doc.save(`${profile.org}-Board-Report-${new Date().toISOString().split("T")[0]}.pdf`);
+    } catch (e) {
+      alert("PDF generation failed: " + e.message + "\n\nTry running npm install in your project folder.");
+    }
+  };
+
   // ═══════════ RESET ═══════════
   const resetAll = () => {
     store.del("dao-profile");
@@ -950,8 +1322,15 @@ export default function App() {
     setOnboardStep(0);
     setOb({ name: "", org: "", industry: "", region: "asean", style: "" });
     store.del("dao-resolved-findings");
+    store.del("dao-revenue-scan");
+    store.del("dao-change-projects");
     setResolvedFindings([]);
     setParsedFindings([]);
+    setRevenueFindings([]);
+    setRevenueScanResults(null);
+    setScanMode("operational");
+    setChangeProjects([]);
+    setShowChangeForm(false);
   };
 
   const navItems = [
@@ -959,6 +1338,7 @@ export default function App() {
     { id: "chat", label: "Chat", icon: ChatIcon },
     { id: "scan", label: "Scan", icon: ScanIcon },
     { id: "journal", label: "Journal", icon: BookIcon, badge: journal.length || null },
+    { id: "track", label: "Track", icon: ClipboardIcon, badge: changeProjects.length || null },
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
   ];
 
@@ -1160,9 +1540,14 @@ export default function App() {
           {/* ═══════ DASHBOARD VIEW ═══════ */}
           {view === "dashboard" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              <div style={{ marginBottom: 20 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#E2E8F0" }}>Command Centre</h2>
-                <p style={{ color: "#94A3B8", fontSize: 12, margin: 0 }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#E2E8F0" }}>Command Centre</h2>
+                  <p style={{ color: "#94A3B8", fontSize: 12, margin: 0 }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+                </div>
+                <button onClick={generateBoardReport} style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 700, color: ACCENT, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                  ⬇ Export Board Report
+                </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                 {[
@@ -1235,60 +1620,100 @@ export default function App() {
                 <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
                   <ScanIcon size={48} color={TEXT_DIM}/>
                   <h2 style={{ fontSize: 20, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Data Connected</h2>
-                  <p style={{ fontSize: 14 }}>Upload Excel, CSV, or text files in the Data tab to run an Enterprise Scan.</p>
+                  <p style={{ fontSize: 14 }}>Upload files in the Data tab to run a scan.</p>
                   <button onClick={() => setView("data")} style={{ ...btnPrimary, marginTop: 16 }}>Go to Data</button>
                 </div>
-              ) : scanning ? (
-                <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                  <div style={{ fontSize: 48, marginBottom: 16, animation: "pulse 2s infinite" }}>&#128269;</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 8px" }}>Enterprise Scan Running</h2>
-                  <p style={{ color: TEXT_DIM, fontSize: 14 }}>Analysing {datasets.length} data source(s) across 5 pattern categories...</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 300, margin: "24px auto 0", textAlign: "left" }}>
-                    {["Sensemaking Engine", "Quick-Fix Patterns", "Governed Loop", "Confidence Intel", "Outcome Learning"].map((eng, i) => (
-                      <div key={eng} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_DIM }}>
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: ACCENT, animation: `pulse 1.5s infinite ${i * 0.3}s` }}/>
-                        {eng}
-                      </div>
-                    ))}
-                  </div>
-                  <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
-                </div>
-              ) : scanResults ? (
+              ) : (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <div>
-                      <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Scan Results</h2>
-                      <p style={{ color: TEXT_DIM, fontSize: 12, margin: "4px 0 0" }}>{new Date(scanResults.timestamp).toLocaleString()}</p>
-                    </div>
-                    <button onClick={runScan} style={btnSmall}>Re-scan</button>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 16, background: BG_SURFACE, borderRadius: 12, padding: 4 }}>
+                    <button onClick={() => setScanMode("operational")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: scanMode === "operational" ? BG_CARD : "transparent", color: scanMode === "operational" ? TEXT : TEXT_DIM, boxShadow: scanMode === "operational" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>🔍 Operational</button>
+                    <button onClick={() => setScanMode("revenue")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: scanMode === "revenue" ? BG_CARD : "transparent", color: scanMode === "revenue" ? GOLD : TEXT_DIM, boxShadow: scanMode === "revenue" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>💰 Revenue Intelligence</button>
                   </div>
-                  {scanResults.error && (
-                    <div style={{ background: `${RED}15`, border: `1px solid ${RED}40`, borderRadius: 10, padding: 12, marginBottom: 12, fontSize: 13, color: RED }}>
-                      Scan encountered an error. {apiStatus === "demo" ? "This is normal in demo mode — connect your API key for real scans." : "Check your API key and try again."}
-                    </div>
-                  )}
-                  {parsedFindings.length > 0 ? (
-                    <div>
-                      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, color: "#94A3B8" }}>{parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length} active</span>
-                        <span style={{ fontSize: 12, color: "#10B981" }}>{resolvedFindings.length} resolved</span>
-                        <span style={{ fontSize: 12, color: "#EF4444" }}>RM {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()} total exposure</span>
+                  {scanMode === "revenue" && (() => {
+                    const industryKey = Object.keys(INDUSTRY_UPLOAD_GUIDANCE).find(k => profile.industry?.toLowerCase().includes(k.toLowerCase())) || "default";
+                    const guidance = INDUSTRY_UPLOAD_GUIDANCE[industryKey];
+                    return (
+                      <div style={{ background: `${GOLD}0D`, border: `1px solid ${GOLD}40`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: 1, marginBottom: 8 }}>📂 {guidance.title}</div>
+                        <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 10px" }}>For best results, upload files containing:</p>
+                        {guidance.items.map((item, i) => (
+                          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 12, color: TEXT, alignItems: "flex-start" }}>
+                            <span style={{ color: GOLD, flexShrink: 0 }}>›</span><span>{item}</span>
+                          </div>
+                        ))}
+                        <button onClick={() => setView("data")} style={{ marginTop: 10, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 600, color: GOLD, cursor: "pointer" }}>+ Upload Data</button>
                       </div>
-                      {[...parsedFindings].sort((a, b) => parseInt(b.tier) - parseInt(a.tier)).map(f => (
-                        <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding}/>
-                      ))}
+                    );
+                  })()}
+                  {scanning ? (
+                    <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                      <div style={{ fontSize: 48, marginBottom: 16 }}>{scanMode === "revenue" ? "💰" : "🔍"}</div>
+                      <h2 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 8px" }}>{scanMode === "revenue" ? "Revenue Intelligence Running" : "Enterprise Scan Running"}</h2>
+                      <p style={{ color: TEXT_DIM, fontSize: 14 }}>Analysing {datasets.length} source(s)...</p>
+                    </div>
+                  ) : scanMode === "operational" ? (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                        <div>
+                          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Operational Scan</h2>
+                          {scanResults && <p style={{ color: TEXT_DIM, fontSize: 11, margin: "4px 0 0" }}>{new Date(scanResults.timestamp).toLocaleString()}</p>}
+                        </div>
+                        <button onClick={runScan} style={btnSmall}>{scanResults ? "Re-scan" : "Run Scan"}</button>
+                      </div>
+                      {scanResults?.text ? (
+                        parsedFindings.length > 0 ? (
+                          <div>
+                            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 12, color: TEXT_DIM }}>{parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length} active</span>
+                              <span style={{ fontSize: 12, color: GREEN }}>{resolvedFindings.length} resolved</span>
+                              <span style={{ fontSize: 12, color: RED }}>RM {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()} exposure</span>
+                            </div>
+                            {[...parsedFindings].sort((a, b) => parseInt(b.tier) - parseInt(a.tier)).map(f => (
+                              <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding}/>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{scanResults.text}</div>
+                        )
+                      ) : (
+                        <div style={{ textAlign: "center", padding: "40px 20px", color: TEXT_DIM }}>
+                          <h3 style={{ color: TEXT, fontSize: 16 }}>Ready to scan {datasets.length} source(s)</h3>
+                          <button onClick={runScan} style={{ ...btnPrimary, marginTop: 16 }}>Run Operational Scan</button>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div style={{ background: "#111827", borderRadius: 12, border: "1px solid #1E3A5F", padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>
-                      {scanResults.text}
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                        <div>
+                          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: GOLD }}>Revenue Intelligence</h2>
+                          {revenueScanResults && <p style={{ color: TEXT_DIM, fontSize: 11, margin: "4px 0 0" }}>{new Date(revenueScanResults.timestamp).toLocaleString()}</p>}
+                        </div>
+                        <button onClick={runScan} style={{ ...btnSmall, color: GOLD, borderColor: `${GOLD}40` }}>{revenueScanResults ? "Re-scan" : "Run Scan"}</button>
+                      </div>
+                      {revenueScanResults?.text ? (
+                        revenueFindings.length > 0 ? (
+                          <div>
+                            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 12, color: TEXT_DIM }}>{revenueFindings.length} opportunities</span>
+                              <span style={{ fontSize: 12, color: GREEN }}>{revenueFindings.filter(o => o.isQuickWin).length} quick wins</span>
+                              <span style={{ fontSize: 12, color: GOLD }}>RM {revenueFindings.reduce((s, o) => s + o.maxAmount, 0).toLocaleString()} potential</span>
+                            </div>
+                            {[...revenueFindings].sort((a, b) => b.maxAmount - a.maxAmount).map(o => <RevenueCard key={o.id} opp={o}/>)}
+                          </div>
+                        ) : (
+                          <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{revenueScanResults.text}</div>
+                        )
+                      ) : (
+                        <div style={{ textAlign: "center", padding: "40px 20px", color: TEXT_DIM }}>
+                          <div style={{ fontSize: 36, marginBottom: 12 }}>💰</div>
+                          <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 8px" }}>Ready to find your hidden revenue</h3>
+                          <p style={{ fontSize: 13, maxWidth: 320, margin: "0 auto 16px" }}>Upload the recommended files above then run the scan.</p>
+                          <button onClick={runScan} style={{ ...btnPrimary, background: GOLD }}>Run Revenue Intelligence Scan</button>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, color: TEXT, margin: "0 0 8px" }}>Ready to Scan</h2>
-                  <p style={{ fontSize: 14 }}>{datasets.length} data source(s) connected.</p>
-                  <button onClick={runScan} style={{ ...btnPrimary, marginTop: 16 }}>Run Enterprise Scan</button>
                 </div>
               )}
             </div>
@@ -1416,6 +1841,48 @@ export default function App() {
                     {entry.assumptions && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Assumptions:</strong> {entry.assumptions}</p>}
                     {entry.expected && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Expected:</strong> {entry.expected}</p>}
                   </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ═══════ CHANGE TRACKER VIEW ═══════ */}
+          {view === "track" && (
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 4px" }}>Change Tracker</h2>
+                  <p style={{ fontSize: 12, color: TEXT_DIM, margin: 0 }}>Track AI & digital transformation implementation progress</p>
+                </div>
+                <button onClick={() => setShowChangeForm(true)} style={btnPrimary}><PlusIcon size={16}/> New Project</button>
+              </div>
+              {showChangeForm && (
+                <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${ACCENT}40`, padding: 20, marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, marginTop: 0, marginBottom: 16 }}>New Implementation Project</h3>
+                  <label style={labelStyle}>
+                    <span style={labelText}>Project Name</span>
+                    <input value={cf.name} onChange={e => setCf({...cf, name: e.target.value})} placeholder="e.g. Decision Accountability OS Rollout" style={inputStyle}/>
+                  </label>
+                  <label style={labelStyle}>
+                    <span style={labelText}>Description</span>
+                    <input value={cf.description} onChange={e => setCf({...cf, description: e.target.value})} placeholder="e.g. Enterprise-wide AI implementation for Operations division" style={inputStyle}/>
+                  </label>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <button onClick={addChangeProject} disabled={!cf.name} style={{ ...btnPrimary, opacity: cf.name ? 1 : 0.4 }}>Create Project</button>
+                    <button onClick={() => setShowChangeForm(false)} style={btnSmall}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {changeProjects.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
+                  <ClipboardIcon size={48} color={TEXT_DIM}/>
+                  <h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Projects Yet</h3>
+                  <p style={{ fontSize: 14, maxWidth: 360, margin: "0 auto 16px" }}>Create a project for each AI or digital transformation implementation you are rolling out. Track progress workstream by workstream with RAG status.</p>
+                  <button onClick={() => setShowChangeForm(true)} style={btnPrimary}>Create First Project</button>
+                </div>
+              ) : (
+                changeProjects.map(project => (
+                  <ChangeProjectCard key={project.id} project={project} onUpdateWorkstream={updateWorkstream}/>
                 ))
               )}
             </div>
