@@ -293,10 +293,7 @@ async function callClaude(systemPrompt, messages, onChunk) {
 // ── Retry wrapper for 429 rate-limit responses ───────────────────
 async function fetchWithRetry(url, options, retries = 3) {
   for (let i = 0; i < retries; i++) {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Scan timed out. Try with fewer files or smaller files.")), 45000)
-    );
-    const res = await Promise.race([fetch(url, options), timeoutPromise]);
+    const res = await fetch(url, options);
     if (res.status === 429) {
       const wait = (i + 1) * 8000;
       await new Promise(r => setTimeout(r, wait));
