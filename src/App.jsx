@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dal-storage.js';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -746,7 +747,8 @@ export default function App() {
   const fileRef = useRef(null);
   const chatFileRef = useRef(null);
   const [showJournalForm, setShowJournalForm] = useState(false);
-  const [jf, setJf] = useState({ statement: "", tier: "2", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", reviewDays: 30 });
+  const [dalErrors, setDalErrors] = useState([]);
+  const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
@@ -1152,7 +1154,11 @@ export default function App() {
 
   // ═══════════ JOURNAL ═══════════
   const addJournalEntry = async () => {
-    const entry = {
+    const formData = { tier: parseInt(jf.tier), owner: jf.owner, review_date: jf.review_date, expected_outcome: jf.expected };
+    const { valid, errors } = validateDecision(formData);
+    if (!valid) { setDalErrors(errors); return; }
+    setDalErrors([]);
+    const rawEntry = {
       id: `DEC-${Date.now().toString(36).toUpperCase()}`,
       date: new Date().toISOString().split("T")[0],
       statement: jf.statement,
@@ -1162,16 +1168,21 @@ export default function App() {
       assumptions: jf.assumptions,
       confidence: jf.confidence,
       expected: jf.expected,
+      owner: jf.owner,
+      review_date: jf.review_date,
       reviewDate: new Date(Date.now() + jf.reviewDays * 86400000).toISOString().split("T")[0],
       decidedBy: profile.name,
       status: "pending",
       actualOutcome: "",
       learning: ""
     };
+    const entry = upgradedDecision(rawEntry);
     const updated = [entry, ...journal];
     setJournal(updated);
+    saveJournal(updated);
+    logAudit(profile.name, entry.id, 'CREATE', 1);
     setShowJournalForm(false);
-    setJf({ statement: "", tier: "2", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", reviewDays: 30 });
+    setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
 
     // Theory of Mind: trigger Decision Profile after 10 entries
     if (updated.length >= 10 && !profileLoading) {
@@ -1783,10 +1794,27 @@ export default function App() {
                       </select>
                     </label>
                   </div>
-                  <label style={labelStyle}>
-                    <span style={labelText}>Expected Outcome</span>
-                    <textarea value={jf.expected} onChange={e => setJf({...jf, expected: e.target.value})} placeholder="What should happen if this decision is correct..." rows={2} style={{...inputStyle, resize: "vertical"}}/>
-                  </label>
+                  {parseInt(jf.tier) >= 2 && (
+                    <>
+                      <label style={labelStyle}>
+                        <span style={labelText}>Expected Outcome</span>
+                        <textarea value={jf.expected} onChange={e => setJf({...jf, expected: e.target.value})} placeholder="What should happen if this decision is correct..." rows={2} style={{...inputStyle, resize: "vertical"}}/>
+                      </label>
+                      <label style={labelStyle}>
+                        <span style={labelText}>Owner</span>
+                        <input type="text" value={jf.owner} onChange={e => setJf({...jf, owner: e.target.value})} placeholder="Decision owner name or role..." style={inputStyle}/>
+                      </label>
+                      <label style={labelStyle}>
+                        <span style={labelText}>Review Date</span>
+                        <input type="date" value={jf.review_date} onChange={e => setJf({...jf, review_date: e.target.value})} style={inputStyle}/>
+                      </label>
+                    </>
+                  )}
+                  {dalErrors.length > 0 && (
+                    <div style={{ color: "#EF4444", fontSize: 12, marginBottom: 8 }}>
+                      {dalErrors.map((err, i) => <div key={i}>⚠ {err}</div>)}
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                     <button onClick={addJournalEntry} disabled={!jf.statement} style={{ ...btnPrimary, opacity: jf.statement ? 1 : 0.4 }}>Save to Journal</button>
                     <button onClick={() => setShowJournalForm(false)} style={btnSmall}>Cancel</button>
