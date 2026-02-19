@@ -749,6 +749,9 @@ export default function App() {
   const [showJournalForm, setShowJournalForm] = useState(false);
   const [dalErrors, setDalErrors] = useState([]);
   const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
+  const [reviewTab, setReviewTab] = useState("all");
+  const [reviewModal, setReviewModal] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "" });
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
@@ -1203,6 +1206,27 @@ export default function App() {
       }
       setProfileLoading(false);
     }
+  };
+
+  const submitReview = () => {
+    const reviewEntry = {
+      id: `REV-${Date.now().toString(36).toUpperCase()}`,
+      reviewed_at: new Date().toISOString(),
+      verdict: reviewForm.verdict,
+      actual_outcome: reviewForm.actual_outcome,
+      lesson: reviewForm.lesson,
+      version: 1,
+    };
+    const updated = journal.map(e => {
+      if (e.id !== reviewModal.id) return e;
+      const reviews = [...(e.reviews ?? []), reviewEntry];
+      return { ...e, reviews, status: "Reviewed" };
+    });
+    setJournal(updated);
+    saveJournal(updated);
+    logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
+    setReviewModal(null);
+    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" });
   };
 
   const generateBoardReport = async () => {
@@ -1836,40 +1860,104 @@ export default function App() {
                   Analysing your decision patterns... Building your Decision Profile.
                 </div>
               )}
-              {journal.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
-                  <BookIcon size={48} color={TEXT_DIM}/>
-                  <h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Decisions Logged</h3>
-                  <p style={{ fontSize: 14, maxWidth: 400, margin: "0 auto" }}>The Decision Journal is your institutional memory. Every decision logged here is permanent, governed, and trackable.</p>
-                </div>
-              ) : (
-                journal.map((entry) => (
-                  <div key={entry.id} style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 16, marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div>
-                        <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: TEXT_DIM }}>{entry.id}</span>
-                        <h4 style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}>{entry.statement}</h4>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20,
-                        background: entry.tier === "3" ? `${RED}20` : entry.tier === "2" ? `${AMBER}20` : `${GREEN}20`,
-                        color: entry.tier === "3" ? RED : entry.tier === "2" ? AMBER : GREEN
-                      }}>Tier {entry.tier}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: TEXT_DIM }}>
-                      <span>{entry.date}</span>
-                      <span>{entry.type}</span>
-                      <span>{entry.confidence === "high" ? "HIGH" : entry.confidence === "moderate" ? "MODERATE" : "LOW"}</span>
-                      <span>Review: {entry.reviewDate}</span>
-                      <span style={{ color: entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
-                        {entry.status}
-                      </span>
-                    </div>
-                    {entry.evidence && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "8px 0 0", lineHeight: 1.5 }}><strong>Evidence:</strong> {entry.evidence}</p>}
-                    {entry.assumptions && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Assumptions:</strong> {entry.assumptions}</p>}
-                    {entry.expected && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Expected:</strong> {entry.expected}</p>}
+              {/* ── Review tabs ── */}
+              <div style={{ display: "flex", gap: 4, background: "#0B1120", borderRadius: 12, padding: 4, marginBottom: 16 }}>
+                <button onClick={() => setReviewTab("all")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: reviewTab === "all" ? BG_CARD : "transparent", color: reviewTab === "all" ? TEXT : TEXT_DIM, boxShadow: reviewTab === "all" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>All Decisions</button>
+                <button onClick={() => setReviewTab("queue")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: reviewTab === "queue" ? BG_CARD : "transparent", color: reviewTab === "queue" ? AMBER : TEXT_DIM, boxShadow: reviewTab === "queue" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>📋 Review Queue</button>
+              </div>
+
+              {/* ── Journal list ── */}
+              {(() => {
+                const today = new Date().toISOString().split("T")[0];
+                const queueEntries = journal.filter(e => e.review_date && e.review_date <= today && e.status !== "Reviewed");
+                const displayEntries = reviewTab === "queue" ? queueEntries : journal;
+
+                if (displayEntries.length === 0) return (
+                  <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
+                    <BookIcon size={48} color={TEXT_DIM}/>
+                    <h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>
+                      {reviewTab === "queue" ? "No Decisions Due for Review" : "No Decisions Logged"}
+                    </h3>
+                    <p style={{ fontSize: 14, maxWidth: 400, margin: "0 auto" }}>
+                      {reviewTab === "queue" ? "Decisions with a review date on or before today will appear here." : "The Decision Journal is your institutional memory. Every decision logged here is permanent, governed, and trackable."}
+                    </p>
                   </div>
-                ))
+                );
+
+                return displayEntries.map((entry) => {
+                  const isOverdue = entry.review_date && entry.review_date < today;
+                  const isDueToday = entry.review_date && entry.review_date === today;
+                  const inQueue = entry.review_date && entry.review_date <= today && entry.status !== "Reviewed";
+                  return (
+                    <div key={entry.id} style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 16, marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                        <div>
+                          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: TEXT_DIM }}>{entry.id}</span>
+                          <h4 style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}>{entry.statement}</h4>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {isOverdue && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${RED}20`, color: RED }}>Overdue</span>}
+                          {isDueToday && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${AMBER}20`, color: AMBER }}>Due Today</span>}
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20,
+                            background: entry.tier === "3" ? `${RED}20` : entry.tier === "2" ? `${AMBER}20` : `${GREEN}20`,
+                            color: entry.tier === "3" ? RED : entry.tier === "2" ? AMBER : GREEN
+                          }}>Tier {entry.tier}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: TEXT_DIM }}>
+                        <span>{entry.date}</span>
+                        <span>{entry.type}</span>
+                        <span>{entry.confidence === "high" ? "HIGH" : entry.confidence === "moderate" ? "MODERATE" : "LOW"}</span>
+                        <span>Review: {entry.reviewDate}</span>
+                        <span style={{ color: entry.status === "Reviewed" ? GREEN : entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
+                          {entry.status}
+                        </span>
+                      </div>
+                      {entry.evidence && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "8px 0 0", lineHeight: 1.5 }}><strong>Evidence:</strong> {entry.evidence}</p>}
+                      {entry.assumptions && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Assumptions:</strong> {entry.assumptions}</p>}
+                      {entry.expected && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Expected:</strong> {entry.expected}</p>}
+                      {inQueue && (
+                        <div style={{ marginTop: 12 }}>
+                          <button onClick={() => { setReviewModal(entry); setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" }); }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>📝 Review</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+
+              {/* ── Review modal ── */}
+              {reviewModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                  <div style={{ background: BG_SURFACE, borderRadius: 16, border: `1px solid ${ACCENT}40`, padding: 24, width: "100%", maxWidth: 480 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>Review Decision</h3>
+                    <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 16px", lineHeight: 1.5 }}>{reviewModal.statement}</p>
+                    <div style={{ marginBottom: 16 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 8 }}>Verdict</span>
+                      <div style={{ display: "flex", gap: 16 }}>
+                        {["Right", "Mixed", "Wrong"].map(v => (
+                          <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, fontWeight: reviewForm.verdict === v ? 700 : 400, color: reviewForm.verdict === v ? (v === "Right" ? GREEN : v === "Wrong" ? RED : AMBER) : TEXT_DIM }}>
+                            <input type="radio" name="verdict" value={v} checked={reviewForm.verdict === v} onChange={() => setReviewForm({...reviewForm, verdict: v})} style={{ accentColor: v === "Right" ? GREEN : v === "Wrong" ? RED : AMBER }}/>
+                            {v}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <label style={labelStyle}>
+                      <span style={labelText}>Actual Outcome *</span>
+                      <textarea value={reviewForm.actual_outcome} onChange={e => setReviewForm({...reviewForm, actual_outcome: e.target.value})} placeholder="What actually happened?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelText}>Lesson *</span>
+                      <textarea value={reviewForm.lesson} onChange={e => setReviewForm({...reviewForm, lesson: e.target.value})} placeholder="What would you do differently?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
+                    </label>
+                    <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                      <button onClick={submitReview} disabled={!reviewForm.actual_outcome.trim() || !reviewForm.lesson.trim()} style={{ ...btnPrimary, opacity: reviewForm.actual_outcome.trim() && reviewForm.lesson.trim() ? 1 : 0.4 }}>Submit Review</button>
+                      <button onClick={() => setReviewModal(null)} style={btnSmall}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
