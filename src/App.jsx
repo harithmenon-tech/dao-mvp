@@ -1576,6 +1576,44 @@ export default function App() {
           {/* ═══════ DASHBOARD VIEW ═══════ */}
           {view === "dashboard" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+
+              {/* ── Hero CTA ── */}
+              <div style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 14, padding: "20px 16px", marginBottom: 14 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", color: TEXT }}>Decision Intelligence, Activated.</h2>
+                <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 14px" }}>Surface your top risks, opportunities, and decisions in 60 seconds.</p>
+                <button onClick={() => setView("brief")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                  ⚡ Generate 60-second Brief
+                </button>
+                <button onClick={() => setView("chat")} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", marginTop: 10, padding: 0, fontFamily: "'DM Sans', sans-serif", display: "block", width: "100%", textAlign: "center" }}>
+                  💬 Discuss with AI
+                </button>
+              </div>
+
+              {/* ── 4-step flow ── */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
+                {[["📁", "Upload"], ["🔍", "Scan"], ["✅", "Decide"], ["📋", "Track"]].map(([icon, label], i, arr) => (
+                  <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <span style={{ fontSize: 18 }}>{icon}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: TEXT_DIM, letterSpacing: 0.5 }}>{label}</span>
+                    </span>
+                    {i < arr.length - 1 && <span style={{ color: BORDER, margin: "0 2px", fontSize: 14 }}>→</span>}
+                  </span>
+                ))}
+              </div>
+
+              {/* ── DAL Health widget ── */}
+              {(() => {
+                const today = new Date().toISOString().split("T")[0];
+                const due = journal.filter(e => e.review_date && e.review_date <= today && e.status !== "Reviewed").length;
+                return (
+                  <button onClick={() => setView("journal")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: BG_CARD, border: `1px solid ${due > 0 ? AMBER : GREEN}40`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", marginBottom: 16, textAlign: "left", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}>
+                    <span style={{ fontSize: 12, color: TEXT_DIM }}>Reviews Due</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "✓ All clear"}</span>
+                  </button>
+                );
+              })()}
+
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
                 <div>
                   <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#E2E8F0" }}>Command Centre</h2>
@@ -2011,6 +2049,7 @@ export default function App() {
               profile={profile}
               onBack={() => setView("dashboard")}
               onChat={() => setView("chat")}
+              onNavigate={(v) => setView(v)}
             />
           )}
 

@@ -106,11 +106,14 @@ function SectionHead({ label, color }) {
 }
 
 // ── Main component ───────────────────────────────────────────────
-export default function BriefView({ profile, onBack, onChat }) {
+export default function BriefView({ profile, onBack, onChat, onNavigate }) {
   const [status, setStatus]   = useState("loading"); // loading | done | error
   const [brief, setBrief]     = useState(null);
   const [rawText, setRawText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [callScriptOpen, setCallScriptOpen]       = useState(false);
+  const [callScript, setCallScript]               = useState("");
+  const [callScriptLoading, setCallScriptLoading] = useState(false);
 
   useEffect(() => {
     async function fetchBrief() {
@@ -264,6 +267,60 @@ export default function BriefView({ profile, onBack, onChat }) {
         </>
       )}
 
+      {/* Next Best Actions */}
+      <SectionHead label="NEXT BEST ACTIONS" color={ACCENT} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+        <button
+          style={btnNBA}
+          onClick={() => {
+            try { onBack(); setTimeout(() => document.querySelector('[data-action="log-decision"]')?.click(), 300); }
+            catch { onBack(); }
+          }}
+        >📝 Log Decision</button>
+        <button style={btnNBA} onClick={() => { if (onNavigate) onNavigate("track"); else onBack(); }}>📋 Create Tracker Item</button>
+        <button style={btnNBA} onClick={() => { if (onNavigate) onNavigate("board"); else onBack(); }}>📊 Draft Board Narrative</button>
+        <button
+          style={btnNBA}
+          onClick={async () => {
+            setCallScriptOpen(true);
+            setCallScriptLoading(true);
+            setCallScript("");
+            try {
+              const ctx = `Situation: ${situation}\nTop Risk: ${risks[0]?.text || "N/A"}`;
+              const raw = await callBriefAPI(
+                "You are an executive communications coach. Write a concise 150-word phone call script for a CEO to use when calling their PM to discuss an urgent business issue. Be direct, structured, and professional. Return plain text only.",
+                `Write a 150-word call script using this context:\n${ctx}`
+              );
+              setCallScript(raw);
+            } catch (e) {
+              setCallScript(`Error generating script: ${e.message}`);
+            }
+            setCallScriptLoading(false);
+          }}
+        >📞 Call PM – Get Script</button>
+      </div>
+
+      {/* Call script inline modal */}
+      {callScriptOpen && (
+        <div style={{ background: BG_CARD, border: `1px solid ${ACCENT}40`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: ACCENT }}>CALL SCRIPT</span>
+            <button onClick={() => setCallScriptOpen(false)} style={{ background: "none", border: "none", color: TEXT_DIM, cursor: "pointer", fontSize: 16, padding: 0, lineHeight: 1 }}>✕</button>
+          </div>
+          {callScriptLoading ? (
+            <p style={{ color: TEXT_DIM, fontSize: 13, margin: 0 }}>Generating script…</p>
+          ) : (
+            <>
+              <pre style={{ color: TEXT, fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.6, margin: "0 0 12px", background: BG_SURFACE, borderRadius: 8, padding: 12 }}>{callScript}</pre>
+              <button
+                onClick={() => navigator.clipboard?.writeText(callScript)}
+                style={{ ...btnNBA, background: `${ACCENT}20`, color: ACCENT, border: `1px solid ${ACCENT}40` }}
+              >📋 Copy Script</button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Bottom CTA */}
       <div style={{ display: "flex", gap: 10, marginTop: 24, marginBottom: 8 }}>
         <button onClick={onChat} style={{ ...btnAction, flex: 1, justifyContent: "center" }}>
@@ -291,4 +348,10 @@ const btnBackFull = {
   background: BG_SURFACE, color: TEXT_DIM, border: `1px solid ${BORDER}`,
   borderRadius: 10, padding: "10px 20px", fontSize: 13, fontWeight: 500,
   cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+};
+const btnNBA = {
+  background: BG_SURFACE, color: TEXT, border: `1px solid ${BORDER}`,
+  borderRadius: 10, padding: "10px 12px", fontSize: 12, fontWeight: 600,
+  cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "left",
+  width: "100%",
 };
