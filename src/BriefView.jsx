@@ -12,9 +12,23 @@ const GREEN     = "#10B981";
 const AMBER     = "#F59E0B";
 const RED       = "#EF4444";
 
+// ── Retry wrapper for 429 rate-limit responses ───────────────────
+async function fetchWithRetry(url, options, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(url, options);
+    if (res.status === 429) {
+      const wait = (i + 1) * 8000;
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Rate limited after retries. Please wait 30 seconds and try again.");
+}
+
 // ── Replicate the same non-streaming fetch the app uses ─────────
 async function callBriefAPI(systemPrompt, userMessage) {
-  const resp = await fetch("/api/claude", {
+  const resp = await fetchWithRetry("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -114,6 +128,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
   const [callScriptOpen, setCallScriptOpen]       = useState(false);
   const [callScript, setCallScript]               = useState("");
   const [callScriptLoading, setCallScriptLoading] = useState(false);
+  const [retryKey, setRetryKey]                   = useState(0);
 
   useEffect(() => {
     async function fetchBrief() {
@@ -164,7 +179,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
     }
 
     fetchBrief();
-  }, []); // single call on mount
+  }, [retryKey]); // re-runs when user clicks Retry
 
   // ── Loading state ────────────────────────────────────────────
   if (status === "loading") {
@@ -185,18 +200,26 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
     );
   }
 
-  // ── Error state (show raw text if available) ─────────────────
+  // ── Error state (show user-friendly message + Retry) ─────────
   if (status === "error") {
+    const isRateLimit = errorMsg.toLowerCase().includes("rate");
+    const displayMsg = isRateLimit
+      ? "The AI is busy. Please wait 30 seconds and click retry."
+      : errorMsg;
     return (
       <div style={{ flex: 1, overflowY: "auto", padding: 16, background: BG_DARK }}>
         <button onClick={onBack} style={btnBack}>← Back</button>
         <div style={{ background: `${RED}10`, border: `1px solid ${RED}40`, borderRadius: 12, padding: 16, marginTop: 16 }}>
-          <p style={{ color: RED, fontWeight: 600, margin: "0 0 8px" }}>Could not parse brief</p>
-          <p style={{ color: TEXT_DIM, fontSize: 12, margin: "0 0 12px" }}>{errorMsg}</p>
-          {rawText && (
+          <p style={{ color: RED, fontWeight: 600, margin: "0 0 8px" }}>Could not generate brief</p>
+          <p style={{ color: TEXT_DIM, fontSize: 12, margin: "0 0 12px" }}>{displayMsg}</p>
+          <button
+            onClick={() => { setStatus("loading"); setErrorMsg(""); setRawText(""); setBrief(null); setRetryKey(k => k + 1); }}
+            style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 8 }}
+          >↺ Retry</button>
+          {rawText && !isRateLimit && (
             <pre style={{
               color: TEXT_DIM, fontSize: 12, whiteSpace: "pre-wrap",
-              background: BG_CARD, borderRadius: 8, padding: 12, margin: 0,
+              background: BG_CARD, borderRadius: 8, padding: 12, margin: "8px 0 0",
             }}>{rawText}</pre>
           )}
         </div>

@@ -290,6 +290,20 @@ async function callClaude(systemPrompt, messages, onChunk) {
   }
 }
 
+// ── Retry wrapper for 429 rate-limit responses ───────────────────
+async function fetchWithRetry(url, options, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(url, options);
+    if (res.status === 429) {
+      const wait = (i + 1) * 8000;
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Rate limited after retries. Please wait 30 seconds and try again.");
+}
+
 async function callClaudeSync(systemPrompt, messages) {
   if (DEMO_MODE) return mockAssistant(systemPrompt, messages);
 
@@ -297,7 +311,7 @@ async function callClaudeSync(systemPrompt, messages) {
   const timeout = setTimeout(() => controller.abort(), 90000);
 
   try {
-    const resp = await fetch("/api/claude", {
+    const resp = await fetchWithRetry("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ systemPrompt, messages, stream: false }),
@@ -1006,7 +1020,11 @@ export default function App() {
         setScanResults({ text: result, timestamp: new Date().toISOString() });
       }
     } catch (e) {
-      const errObj = { text: `Error running scan: ${e.message}`, timestamp: new Date().toISOString(), error: true };
+      const isRateLimit = e.message.toLowerCase().includes("rate");
+      const errText = isRateLimit
+        ? "Scan rate limited. Please wait 30 seconds and click Re-scan."
+        : `Error running scan: ${e.message}`;
+      const errObj = { text: errText, timestamp: new Date().toISOString(), error: true };
       scanMode === "revenue" ? setRevenueScanResults(errObj) : setScanResults(errObj);
     }
     setScanning(false);
