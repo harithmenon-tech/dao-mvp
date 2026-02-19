@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dal-storage.js';
+import BriefView from './BriefView.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -2005,6 +2006,14 @@ export default function App() {
           )}
 
           {/* ═══════ DATA VIEW ═══════ */}
+          {view === "brief" && (
+            <BriefView
+              profile={profile}
+              onBack={() => setView("dashboard")}
+              onChat={() => setView("chat")}
+            />
+          )}
+
           {view === "data" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <h2 style={{ fontSize: 20, fontWeight: 600, marginTop: 0, marginBottom: 16 }}>Data Sources</h2>
