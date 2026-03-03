@@ -129,6 +129,9 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
   const [callScript, setCallScript]               = useState("");
   const [callScriptLoading, setCallScriptLoading] = useState(false);
   const [retryKey, setRetryKey]                   = useState(0);
+  const [copilotOpen, setCopilotOpen]             = useState(false);
+  const [copilotResult, setCopilotResult]         = useState(null);
+  const [copilotLoading, setCopilotLoading]       = useState(false);
 
   useEffect(() => {
     async function fetchBrief() {
@@ -180,6 +183,30 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
 
     fetchBrief();
   }, [retryKey]); // re-runs when user clicks Retry
+
+  // ── Copilot Options loader ───────────────────────────────────
+  const loadCopilot = async () => {
+    setCopilotLoading(true);
+    try {
+      const res = await fetchWithRetry("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system: `Return JSON only: {"options":[{"label":"","pros":"","cons":""}x3],"recommendation":{"label":"","rationale":""}}`,
+          messages: [{ role: "user", content:
+            `Situation: ${brief?.situation}\nTop risk: ${brief?.risks?.[0]?.text}\nTop opportunity: ${brief?.opportunities?.[0]?.text}` }],
+          stream: false,
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      setCopilotResult(JSON.parse(clean));
+    } catch (e) {
+      setCopilotResult({ error: e.message });
+    }
+    setCopilotLoading(false);
+  };
 
   // ── Loading state ────────────────────────────────────────────
   if (status === "loading") {
@@ -288,6 +315,80 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
             </div>
           ))}
         </>
+      )}
+
+      {/* Copilot Options */}
+      {!copilotOpen && (
+        <button
+          onClick={() => { setCopilotOpen(true); loadCopilot(); }}
+          style={{
+            width: "100%", marginTop: 16, marginBottom: 4,
+            background: `${ACCENT}15`, color: ACCENT,
+            border: `1px solid ${ACCENT}40`, borderRadius: 10,
+            padding: "11px 16px", fontSize: 13, fontWeight: 600,
+            cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+            textAlign: "left",
+          }}
+        >
+          💡 Generate Options &amp; Recommendation
+        </button>
+      )}
+
+      {copilotOpen && (
+        <div style={{ marginTop: 16, marginBottom: 4 }}>
+          <SectionHead label="COPILOT OPTIONS" color={ACCENT} />
+          {copilotLoading ? (
+            <p style={{ color: TEXT_DIM, fontSize: 13, margin: "8px 0" }}>Generating options…</p>
+          ) : copilotResult?.error ? (
+            <div style={{
+              background: `${RED}10`, border: `1px solid ${RED}40`,
+              borderRadius: 10, padding: "12px 14px", marginBottom: 10,
+            }}>
+              <p style={{ margin: 0, fontSize: 13, color: RED }}>{copilotResult.error}</p>
+            </div>
+          ) : copilotResult ? (
+            <>
+              {Array.isArray(copilotResult.options) && copilotResult.options.map((opt, i) => (
+                <div key={i} style={{
+                  background: BG_CARD,
+                  border: `1px solid ${ACCENT}30`,
+                  borderLeft: `3px solid ${ACCENT}`,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  marginBottom: 10,
+                }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: TEXT }}>{opt.label}</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: GREEN }}>
+                    <span style={{ fontWeight: 600 }}>Pros: </span>{opt.pros}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: RED }}>
+                    <span style={{ fontWeight: 600 }}>Cons: </span>{opt.cons}
+                  </p>
+                </div>
+              ))}
+              {copilotResult.recommendation && (
+                <div style={{
+                  background: `${ACCENT}12`,
+                  border: `1px solid ${ACCENT}50`,
+                  borderLeft: `3px solid ${ACCENT}`,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: ACCENT, marginBottom: 6 }}>
+                    ★ RECOMMENDATION
+                  </div>
+                  <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: TEXT }}>
+                    {copilotResult.recommendation.label}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: TEXT_DIM, lineHeight: 1.5 }}>
+                    {copilotResult.recommendation.rationale}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
       )}
 
       {/* Next Best Actions */}
