@@ -763,6 +763,10 @@ export default function App() {
   const fileRef = useRef(null);
   const chatFileRef = useRef(null);
   const [showJournalForm, setShowJournalForm] = useState(false);
+  const [challengeOpen, setChallengeOpen] = useState(false);
+  const [challengePending, setChallengePending] = useState(null);
+  const [rationaleLoading, setRationaleLoading] = useState(false);
+  const [checkedFlags, setCheckedFlags] = useState([]);
   const [dalErrors, setDalErrors] = useState([]);
   const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
   const [reviewTab, setReviewTab] = useState("all");
@@ -1215,8 +1219,20 @@ export default function App() {
       decidedBy: profile.name,
       status: "pending",
       actualOutcome: "",
-      learning: ""
+      learning: "",
+      rationale: "",
+      context: "",
+      challenge_flags: []
     };
+
+    // Tier 2+ → route through Challenge Check modal
+    if (parseInt(jf.tier) >= 2) {
+      setChallengePending(rawEntry);
+      setChallengeOpen(true);
+      return;
+    }
+
+    // Tier 1 → save immediately
     const entry = upgradedDecision(rawEntry);
     const updated = [entry, ...journal];
     setJournal(updated);
@@ -1244,6 +1260,45 @@ export default function App() {
       }
       setProfileLoading(false);
     }
+  };
+
+  const confirmDecision = async () => {
+    setRationaleLoading(true);
+    let rationale = "", context = "", confidence = "";
+    try {
+      const res = await fetchWithRetry("/api/claude", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system: `Return JSON only: {"rationale":"2-3 sentence rationale","context":"1 line context","confidence":"High|Medium|Low"}`,
+          messages: [{ role: "user", content:
+            `Decision: ${challengePending?.statement}\nTier: ${challengePending?.tier}\nExpected: ${challengePending?.expected_outcome}` }],
+          stream: false
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      rationale = parsed.rationale;
+      context = parsed.context;
+      confidence = parsed.confidence;
+    } catch (e) { /* fail silently — never block save */ }
+
+    const entry = upgradedDecision({
+      ...challengePending,
+      rationale,
+      context,
+      confidence,
+      challenge_flags: checkedFlags
+    });
+    const updated = [entry, ...journal];
+    setJournal(updated);
+    saveJournal(updated);
+    logAudit(profile?.name, entry.id, "CONFIRM", entry.version);
+    setRationaleLoading(false);
+    setChallengeOpen(false);
+    setChallengePending(null);
+    setCheckedFlags([]);
+    setShowJournalForm(false);
   };
 
   const submitReview = () => {
@@ -1928,6 +1983,44 @@ export default function App() {
                   <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                     <button onClick={addJournalEntry} disabled={!jf.statement} style={{ ...btnPrimary, opacity: jf.statement ? 1 : 0.4 }}>Save to Journal</button>
                     <button onClick={() => setShowJournalForm(false)} style={btnSmall}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Challenge Check Modal (Tier 2+) ── */}
+              {challengeOpen && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 28, maxWidth: 480, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: AMBER, marginBottom: 8 }}>CHALLENGE CHECK — TIER {challengePending?.tier}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 4 }}>{challengePending?.statement}</div>
+                    <div style={{ fontSize: 12, color: TEXT_DIM, marginBottom: 20 }}>Review the checklist below before confirming this decision.</div>
+                    {[
+                      "Is the evidence sufficient to act?",
+                      "Have key assumptions been challenged?",
+                      "Is this decision reversible if wrong?",
+                      "Are affected stakeholders informed?",
+                      "Has a fallback option been identified?"
+                    ].map((flag, i) => (
+                      <label key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={checkedFlags.includes(flag)}
+                          onChange={e => setCheckedFlags(prev => e.target.checked ? [...prev, flag] : prev.filter(f => f !== flag))}
+                          style={{ accentColor: ACCENT, width: 16, height: 16 }}
+                        />
+                        <span style={{ fontSize: 13, color: TEXT }}>{flag}</span>
+                      </label>
+                    ))}
+                    {rationaleLoading && (
+                      <div style={{ fontSize: 12, color: ACCENT, marginTop: 8, marginBottom: 4 }}>Generating rationale via Claude…</div>
+                    )}
+                    <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                      <button onClick={confirmDecision} disabled={rationaleLoading} style={{ ...btnPrimary, opacity: rationaleLoading ? 0.5 : 1 }}>
+                        {rationaleLoading ? "Saving…" : "Confirm"}
+                      </button>
+                      <button onClick={() => setChallengeOpen(false)} disabled={rationaleLoading} style={btnSmall}>Revise</button>
+                      <button onClick={() => { setChallengeOpen(false); setChallengePending(null); setCheckedFlags([]); setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 }); }} disabled={rationaleLoading} style={{ ...btnSmall, color: RED }}>Defer</button>
+                    </div>
                   </div>
                 </div>
               )}
