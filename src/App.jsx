@@ -771,7 +771,7 @@ export default function App() {
   const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
   const [reviewTab, setReviewTab] = useState("all");
   const [reviewModal, setReviewModal] = useState(null);
-  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "" });
+  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "", variance: "" });
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
@@ -1308,6 +1308,7 @@ export default function App() {
       verdict: reviewForm.verdict,
       actual_outcome: reviewForm.actual_outcome,
       lesson: reviewForm.lesson,
+      variance: reviewForm.variance,
       version: 1,
     };
     const updated = journal.map(e => {
@@ -1319,7 +1320,7 @@ export default function App() {
     saveJournal(updated);
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
-    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" });
+    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "" });
   };
 
   const generateBoardReport = async () => {
@@ -1465,7 +1466,7 @@ export default function App() {
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "chat", label: "Chat", icon: ChatIcon },
     { id: "scan", label: "Scan", icon: ScanIcon },
-    { id: "journal", label: "Journal", icon: BookIcon, badge: journal.length || null },
+    { id: "journal", label: "Decision Ledger", icon: BookIcon, badge: journal.length || null },
     { id: "track", label: "Track", icon: ClipboardIcon, badge: changeProjects.length || null },
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
   ];
@@ -1899,7 +1900,7 @@ export default function App() {
           {view === "journal" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Decision Journal</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Decision Ledger</h2>
                 <button onClick={() => setShowJournalForm(true)} style={btnPrimary}><PlusIcon size={16}/> Log Decision</button>
               </div>
 
@@ -2058,7 +2059,7 @@ export default function App() {
                       {reviewTab === "queue" ? "No Decisions Due for Review" : "No Decisions Logged"}
                     </h3>
                     <p style={{ fontSize: 14, maxWidth: 400, margin: "0 auto" }}>
-                      {reviewTab === "queue" ? "Decisions with a review date on or before today will appear here." : "The Decision Journal is your institutional memory. Every decision logged here is permanent, governed, and trackable."}
+                      {reviewTab === "queue" ? "Decisions with a review date on or before today will appear here." : "The Decision Ledger is your institutional memory. Every decision logged here is permanent, governed, and trackable."}
                     </p>
                   </div>
                 );
@@ -2123,6 +2124,20 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 8 }}>Outcome vs Expected (required)</span>
+                      <div style={{ display: "flex", gap: 16 }}>
+                        {["Better","Same","Worse"].map(v => (
+                          <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, fontWeight: reviewForm.variance === v ? 700 : 400, color: reviewForm.variance === v ? (v === "Better" ? GREEN : v === "Worse" ? RED : AMBER) : TEXT_DIM }}>
+                            <input type="radio" name="variance"
+                              checked={reviewForm.variance === v}
+                              onChange={() => setReviewForm(f => ({...f, variance: v}))}
+                              style={{ accentColor: v === "Better" ? GREEN : v === "Worse" ? RED : AMBER }}
+                            /> {v === "Better" ? "⬆ Better" : v === "Same" ? "➡ Same" : "⬇ Worse"}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                     <label style={labelStyle}>
                       <span style={labelText}>Actual Outcome *</span>
                       <textarea value={reviewForm.actual_outcome} onChange={e => setReviewForm({...reviewForm, actual_outcome: e.target.value})} placeholder="What actually happened?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
@@ -2132,7 +2147,7 @@ export default function App() {
                       <textarea value={reviewForm.lesson} onChange={e => setReviewForm({...reviewForm, lesson: e.target.value})} placeholder="What would you do differently?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
                     </label>
                     <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                      <button onClick={submitReview} disabled={!reviewForm.actual_outcome.trim() || !reviewForm.lesson.trim()} style={{ ...btnPrimary, opacity: reviewForm.actual_outcome.trim() && reviewForm.lesson.trim() ? 1 : 0.4 }}>Submit Review</button>
+                      <button onClick={submitReview} disabled={!reviewForm.actual_outcome.trim() || !reviewForm.lesson.trim() || !reviewForm.variance} style={{ ...btnPrimary, opacity: reviewForm.actual_outcome.trim() && reviewForm.lesson.trim() && reviewForm.variance ? 1 : 0.4 }}>Submit Review</button>
                       <button onClick={() => setReviewModal(null)} style={btnSmall}>Cancel</button>
                     </div>
                   </div>
