@@ -755,6 +755,7 @@ export default function App() {
   const [scanResults, setScanResults] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [chatInput, setChatInput] = useState("");
+  const [micState, setMicState] = useState("idle"); // "idle" | "listening" | "error"
   const [streaming, setStreaming] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [ob, setOb] = useState({ name: "", org: "", industry: "", region: "asean", style: "" });
@@ -1033,6 +1034,22 @@ export default function App() {
   };
 
   // ═══════════ CHAT ═══════════
+  const handleMic = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setMicState("error"); return; }
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+    r.onstart = () => setMicState("listening");
+    r.onend = () => setMicState("idle");
+    r.onerror = () => setMicState("error");
+    r.onresult = (e) => {
+      setChatInput(prev => prev + e.results[0][0].transcript);
+      setMicState("idle");
+    };
+    r.start();
+  };
+
   const sendMessage = async () => {
     if (!chatInput.trim() && chatFiles.length === 0) return;
     if (streaming) return;
@@ -1585,6 +1602,16 @@ export default function App() {
                     style={{ ...inputStyle, flex: 1, margin: 0 }}
                     disabled={streaming}
                   />
+                  <button
+                    onClick={handleMic}
+                    title={micState === "error" ? "Voice not supported" : micState === "listening" ? "Listening…" : "Voice input"}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer", fontSize: 20,
+                      color: micState === "listening" ? "#EF4444" : "#64748B",
+                      animation: micState === "listening" ? "pulse 1s infinite" : "none",
+                      flexShrink: 0, padding: "6px"
+                    }}
+                  >🎤</button>
                   <button onClick={sendMessage} disabled={streaming || (!chatInput.trim() && chatFiles.length === 0)} style={{ ...btnPrimary, padding: "10px 16px", opacity: (chatInput.trim() || chatFiles.length > 0) && !streaming ? 1 : 0.4, flexShrink: 0 }}>
                     <SendIcon size={18} color="#fff"/>
                   </button>
