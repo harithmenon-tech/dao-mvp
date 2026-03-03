@@ -194,27 +194,54 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 2000,
-          system: `Return valid JSON only. No markdown. No backticks. No explanation. Use exactly this structure: {"options":[{"label":"string","pros":"string","cons":"string"},{"label":"string","pros":"string","cons":"string"},{"label":"string","pros":"string","cons":"string"}],"recommendation":{"label":"string","rationale":"string"}}`,
+          system: `You are a strategic advisor. Respond in this exact format with no deviation:
+
+OPTION_1_LABEL: [title]
+OPTION_1_PROS: [one sentence benefit]
+OPTION_1_CONS: [one sentence risk]
+
+OPTION_2_LABEL: [title]
+OPTION_2_PROS: [one sentence benefit]
+OPTION_2_CONS: [one sentence risk]
+
+OPTION_3_LABEL: [title]
+OPTION_3_PROS: [one sentence benefit]
+OPTION_3_CONS: [one sentence risk]
+
+RECOMMENDATION_LABEL: [chosen option title]
+RECOMMENDATION_RATIONALE: [one sentence reason]`,
           messages: [{
             role: "user",
-            content: `Give me 3 strategic options for this situation: ${brief?.situation || "No situation data"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Top opportunity: ${brief?.opportunities?.[0]?.text || "unknown"}.`
+            content: `Situation: ${brief?.situation || "No situation data"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Top opportunity: ${brief?.opportunities?.[0]?.text || "unknown"}.`
           }],
           stream: false
         })
       });
       const data = await res.json();
-      console.log("Copilot raw response:", JSON.stringify(data));
       const text = data.content?.[0]?.text || "";
-      console.log("Copilot text:", text);
-      const start = text.indexOf("{");
-      const end = text.lastIndexOf("}");
-      if (start === -1 || end === -1) throw new Error("No JSON found in response");
-      const jsonStr = text.slice(start, end + 1);
-      const parsed = JSON.parse(jsonStr);
+
+      // Parse key:value format
+      const get = (key) => {
+        const match = text.match(new RegExp(`${key}:\\s*(.+)`));
+        return match ? match[1].trim() : "";
+      };
+
+      const parsed = {
+        options: [
+          { label: get("OPTION_1_LABEL"), pros: get("OPTION_1_PROS"), cons: get("OPTION_1_CONS") },
+          { label: get("OPTION_2_LABEL"), pros: get("OPTION_2_PROS"), cons: get("OPTION_2_CONS") },
+          { label: get("OPTION_3_LABEL"), pros: get("OPTION_3_PROS"), cons: get("OPTION_3_CONS") },
+        ],
+        recommendation: {
+          label: get("RECOMMENDATION_LABEL"),
+          rationale: get("RECOMMENDATION_RATIONALE")
+        }
+      };
+
+      if (!parsed.options[0].label) throw new Error("Could not parse options");
       setCopilotResult(parsed);
     } catch(e) {
-      console.error("Copilot error:", e.message);
-      setCopilotResult({ error: e.message });
+      setCopilotResult({ error: "Could not generate options. Please try again." });
     }
     setCopilotLoading(false);
   };
