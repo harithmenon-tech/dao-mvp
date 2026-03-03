@@ -193,53 +193,19 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
-          system: `You are a strategic advisor. Respond in this exact format with no deviation:
-
-OPTION_1_LABEL: [title]
-OPTION_1_PROS: [one sentence benefit]
-OPTION_1_CONS: [one sentence risk]
-
-OPTION_2_LABEL: [title]
-OPTION_2_PROS: [one sentence benefit]
-OPTION_2_CONS: [one sentence risk]
-
-OPTION_3_LABEL: [title]
-OPTION_3_PROS: [one sentence benefit]
-OPTION_3_CONS: [one sentence risk]
-
-RECOMMENDATION_LABEL: [chosen option title]
-RECOMMENDATION_RATIONALE: [one sentence reason]`,
+          max_tokens: 1500,
+          system: "You are a strategic advisor. Be concise and direct.",
           messages: [{
             role: "user",
-            content: `Situation: ${brief?.situation || "No situation data"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Top opportunity: ${brief?.opportunities?.[0]?.text || "unknown"}.`
+            content: `Give me exactly 3 strategic options and a recommendation for this situation: ${brief?.situation || "the current business situation"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Format your response with clear Option 1, Option 2, Option 3 headings and a final Recommendation section.`
           }],
           stream: false
         })
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || "";
-
-      // Parse key:value format
-      const get = (key) => {
-        const match = text.match(new RegExp(`${key}:\\s*(.+)`));
-        return match ? match[1].trim() : "";
-      };
-
-      const parsed = {
-        options: [
-          { label: get("OPTION_1_LABEL"), pros: get("OPTION_1_PROS"), cons: get("OPTION_1_CONS") },
-          { label: get("OPTION_2_LABEL"), pros: get("OPTION_2_PROS"), cons: get("OPTION_2_CONS") },
-          { label: get("OPTION_3_LABEL"), pros: get("OPTION_3_PROS"), cons: get("OPTION_3_CONS") },
-        ],
-        recommendation: {
-          label: get("RECOMMENDATION_LABEL"),
-          rationale: get("RECOMMENDATION_RATIONALE")
-        }
-      };
-
-      if (!parsed.options[0].label) throw new Error("Could not parse options");
-      setCopilotResult(parsed);
+      if (!text) throw new Error("Empty response");
+      setCopilotResult({ raw: text });
     } catch(e) {
       setCopilotResult({ error: "Could not generate options. Please try again." });
     }
@@ -384,48 +350,21 @@ RECOMMENDATION_RATIONALE: [one sentence reason]`,
             }}>
               <p style={{ margin: 0, fontSize: 13, color: RED }}>{copilotResult.error}</p>
             </div>
-          ) : copilotResult ? (
+          ) : (
             <>
-              {Array.isArray(copilotResult.options) && copilotResult.options.map((opt, i) => (
-                <div key={i} style={{
-                  background: BG_CARD,
-                  border: `1px solid ${ACCENT}30`,
-                  borderLeft: `3px solid ${ACCENT}`,
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  marginBottom: 10,
-                }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: TEXT }}>{opt.label}</p>
-                  <p style={{ margin: "0 0 4px", fontSize: 12, color: GREEN }}>
-                    <span style={{ fontWeight: 600 }}>Pros: </span>{opt.pros}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, color: RED }}>
-                    <span style={{ fontWeight: 600 }}>Cons: </span>{opt.cons}
-                  </p>
-                </div>
-              ))}
-              {copilotResult.recommendation && (
+              {copilotResult && !copilotResult.error && (
                 <div style={{
-                  background: `${ACCENT}12`,
-                  border: `1px solid ${ACCENT}50`,
-                  borderLeft: `3px solid ${ACCENT}`,
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  marginBottom: 10,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8, padding: "16px",
+                  whiteSpace: "pre-wrap", lineHeight: 1.6,
+                  fontSize: 14, color: "#E2E8F0"
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: ACCENT, marginBottom: 6 }}>
-                    ★ RECOMMENDATION
-                  </div>
-                  <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: TEXT }}>
-                    {copilotResult.recommendation.label}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, color: TEXT_DIM, lineHeight: 1.5 }}>
-                    {copilotResult.recommendation.rationale}
-                  </p>
+                  {copilotResult.raw}
                 </div>
               )}
             </>
-          ) : null}
+          )}
         </div>
       )}
 
