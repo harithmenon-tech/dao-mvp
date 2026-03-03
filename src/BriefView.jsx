@@ -192,34 +192,28 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: `You must respond with valid JSON only. No markdown, no backticks, no explanation. Respond exactly in this format:\n{"options":[{"label":"Option A","pros":"main benefit","cons":"main risk"},{"label":"Option B","pros":"main benefit","cons":"main risk"},{"label":"Option C","pros":"main benefit","cons":"main risk"}],"recommendation":{"label":"Option A","rationale":"one sentence reason"}}`,
-          messages: [{ role: "user", content:
-            `Situation: ${brief?.situation}\nTop risk: ${brief?.risks?.[0]?.text}\nTop opportunity: ${brief?.opportunities?.[0]?.text}` }],
-          stream: false,
+          model: "claude-sonnet-4-20250514",
           max_tokens: 2000,
-        }),
+          system: `Return valid JSON only. No markdown. No backticks. No explanation. Use exactly this structure: {"options":[{"label":"string","pros":"string","cons":"string"},{"label":"string","pros":"string","cons":"string"},{"label":"string","pros":"string","cons":"string"}],"recommendation":{"label":"string","rationale":"string"}}`,
+          messages: [{
+            role: "user",
+            content: `Give me 3 strategic options for this situation: ${brief?.situation || "No situation data"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Top opportunity: ${brief?.opportunities?.[0]?.text || "unknown"}.`
+          }],
+          stream: false
+        })
       });
       const data = await res.json();
+      console.log("Copilot raw response:", JSON.stringify(data));
       const text = data.content?.[0]?.text || "";
-      const clean = text
-        .replace(/```json/gi, "")
-        .replace(/```/g, "")
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
-        .trim();
-      // Find JSON object boundaries
-      const start = clean.indexOf("{");
-      const end = clean.lastIndexOf("}");
-      const jsonStr = start !== -1 && end !== -1 ? clean.slice(start, end + 1) : clean;
-      let parsed;
-      try {
-        parsed = JSON.parse(jsonStr);
-      } catch(e) {
-        setCopilotResult({ error: "Could not generate options. Please try again." });
-        setCopilotLoading(false);
-        return;
-      }
+      console.log("Copilot text:", text);
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("No JSON found in response");
+      const jsonStr = text.slice(start, end + 1);
+      const parsed = JSON.parse(jsonStr);
       setCopilotResult(parsed);
-    } catch (e) {
+    } catch(e) {
+      console.error("Copilot error:", e.message);
       setCopilotResult({ error: e.message });
     }
     setCopilotLoading(false);
