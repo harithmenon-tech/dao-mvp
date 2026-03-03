@@ -192,7 +192,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: `Return JSON only: {"options":[{"label":"","pros":"","cons":""}x3],"recommendation":{"label":"","rationale":""}}`,
+          system: `You must respond with valid JSON only. No markdown, no backticks, no explanation. Respond exactly in this format:\n{"options":[{"label":"Option A","pros":"main benefit","cons":"main risk"},{"label":"Option B","pros":"main benefit","cons":"main risk"},{"label":"Option C","pros":"main benefit","cons":"main risk"}],"recommendation":{"label":"Option A","rationale":"one sentence reason"}}`,
           messages: [{ role: "user", content:
             `Situation: ${brief?.situation}\nTop risk: ${brief?.risks?.[0]?.text}\nTop opportunity: ${brief?.opportunities?.[0]?.text}` }],
           stream: false,
@@ -201,10 +201,18 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || "";
-      const clean = text.replace(/```json|```/g, "").trim();
+      const clean = text
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+        .trim();
+      // Find JSON object boundaries
+      const start = clean.indexOf("{");
+      const end = clean.lastIndexOf("}");
+      const jsonStr = start !== -1 && end !== -1 ? clean.slice(start, end + 1) : clean;
       let parsed;
       try {
-        parsed = JSON.parse(clean);
+        parsed = JSON.parse(jsonStr);
       } catch(e) {
         setCopilotResult({ error: "Could not generate options. Please try again." });
         setCopilotLoading(false);
