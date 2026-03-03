@@ -196,12 +196,21 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
           messages: [{ role: "user", content:
             `Situation: ${brief?.situation}\nTop risk: ${brief?.risks?.[0]?.text}\nTop opportunity: ${brief?.opportunities?.[0]?.text}` }],
           stream: false,
+          max_tokens: 2000,
         }),
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || "";
       const clean = text.replace(/```json|```/g, "").trim();
-      setCopilotResult(JSON.parse(clean));
+      let parsed;
+      try {
+        parsed = JSON.parse(clean);
+      } catch(e) {
+        setCopilotResult({ error: "Could not generate options. Please try again." });
+        setCopilotLoading(false);
+        return;
+      }
+      setCopilotResult(parsed);
     } catch (e) {
       setCopilotResult({ error: e.message });
     }
