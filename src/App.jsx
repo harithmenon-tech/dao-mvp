@@ -3,6 +3,7 @@ import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dal-storage.js';
 import BriefView from './BriefView.jsx';
+import domainRegistry from './domain/domainRegistry.js';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -787,6 +788,11 @@ export default function App() {
   const [changeProjects, setChangeProjects] = useState(store.get("dao-change-projects") || []);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [cf, setCf] = useState({ name: "", description: "" });
+
+  // Domain context — reads active domain from localStorage
+  const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
+  const activeDomain = domainRegistry[activeDomainId] || domainRegistry['generic'];
+  console.log('[DAO] Active domain:', activeDomain.id, '(' + activeDomain.label + ')');
 
   // Health check — determines if live API is available
   useEffect(() => {
