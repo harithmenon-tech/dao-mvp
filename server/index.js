@@ -216,6 +216,59 @@ app.post('/api/variance', async (req, res) => {
   }
 });
 
+app.post('/api/decision-health', async (req, res) => {
+  try {
+    const { decisions, dataSummary, activeDomain } = req.body;
+
+    // Filter: only assess Draft or Confirmed decisions
+    const filtered = (decisions || []).filter(
+      d => d.status !== 'Reviewed' && d.status !== 'Archived'
+    );
+
+    // If nothing to assess, return early without calling Claude
+    if (filtered.length === 0) {
+      return res.status(200).json({ results: [] });
+    }
+
+    // Token management: summarise if payload too large
+    let decisionsPayload = filtered;
+    if (JSON.stringify(decisionsPayload).length > 2000) {
+      decisionsPayload = filtered.map(d => ({
+        id: d.id,
+        title: d.title,
+        context: (d.context || '').slice(0, 200),
+      }));
+    }
+    const decisionsJSON = JSON.stringify(decisionsPayload);
+
+    // Domain overlay injection
+    let domainOverlay = '';
+    if (activeDomain && activeDomain !== 'generic') {
+      domainOverlay = `Domain context: This organisation operates in the ${activeDomain} sector. Apply domain-appropriate expertise when assessing whether these decisions are on track.\n`;
+    }
+
+    const userPrompt = `${domainOverlay}Decisions:${decisionsJSON}|Data:${dataSummary || ''}\nReturn:{"results":[{"id":"id1","status":"Healthy","reasoning":"One sentence.","urgency":"Low"}]}`;
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: 'You are a decision health analyst. Healthy=on track or completed well. Watch=early signs of underperformance. At Risk=contradicted by operational data. Return ONLY valid JSON. No preamble, no markdown, no backticks.',
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = message.content[0].text;
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return res.status(200).json(parsed);
+  } catch (err) {
+    console.error('[/api/decision-health error]', err.message, err.stack);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
