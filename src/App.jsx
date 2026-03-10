@@ -1890,6 +1890,70 @@ export default function App() {
                   <button onClick={() => setView("data")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data →</button>
                 </div>
               )}
+              {/* ── Decision Health widget ── */}
+              {decisionHealth && decisionHealth.results && decisionHealth.results.length > 0 && (
+                <div style={{margin:'16px 0',border:'1px solid #2a2a4a',borderRadius:'12px',
+                  overflow:'hidden'}}>
+                  <div
+                    onClick={() => setHealthExpanded(!healthExpanded)}
+                    style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                      padding:'12px 16px',background:'#12122a',cursor:'pointer'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                      <span style={{fontSize:'16px'}}>🏥</span>
+                      <span style={{fontSize:'13px',fontWeight:'600',color:'#e0e0ff'}}>
+                        Decision Health
+                      </span>
+                      <span style={{fontSize:'11px',background:'#2a2a5a',color:'#8888ff',
+                        border:'1px solid #4a4a8a',borderRadius:'10px',padding:'2px 8px'}}>
+                        {decisionHealth.results.filter(r => r.status === 'At Risk').length > 0
+                          ? `${decisionHealth.results.filter(r => r.status === 'At Risk').length} At Risk`
+                          : decisionHealth.results.filter(r => r.status === 'Watch').length > 0
+                          ? `${decisionHealth.results.filter(r => r.status === 'Watch').length} Watch`
+                          : 'All Healthy'}
+                      </span>
+                    </div>
+                    <span style={{color:'#8888bb',fontSize:'12px'}}>
+                      {healthExpanded ? '▲' : '▼'}
+                    </span>
+                  </div>
+                  {healthExpanded && (
+                    <div style={{background:'#0d0d1f',padding:'12px 16px'}}>
+                      {decisionHealth.results.map(result => (
+                        <div key={result.id} style={{display:'flex',justifyContent:'space-between',
+                          alignItems:'flex-start',padding:'10px 0',
+                          borderBottom:'1px solid #1a1a3a'}}>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'8px',
+                              marginBottom:'4px'}}>
+                              <span style={{fontSize:'11px',fontWeight:'600',
+                                color: result.status === 'At Risk' ? '#ff6b6b'
+                                  : result.status === 'Watch' ? '#ffa500' : '#44ff88',
+                                textTransform:'uppercase'}}>
+                                {result.status}
+                              </span>
+                              <span style={{fontSize:'10px',color:'#666688'}}>
+                                {result.urgency}
+                              </span>
+                            </div>
+                            <div style={{fontSize:'12px',color:'#aaaacc',lineHeight:'1.4'}}>
+                              {result.reasoning}
+                            </div>
+                          </div>
+                          {(result.status === 'Watch' || result.status === 'At Risk') && (
+                            <button
+                              onClick={() => setView('journal')}
+                              style={{marginLeft:'12px',padding:'4px 10px',fontSize:'11px',
+                                background:'#2a2a5a',color:'#8888ff',border:'1px solid #4a4a8a',
+                                borderRadius:'6px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                              Review Now
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
