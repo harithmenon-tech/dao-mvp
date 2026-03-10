@@ -276,6 +276,17 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
         EXECUTIVE BRIEF
       </div>
 
+      {/* Domain badge — shown only when dao-active-domain is 'water' */}
+      {(() => {
+        const domainVal = localStorage.getItem('dao-active-domain');
+        if (domainVal !== 'water') return null;
+        return (
+          <div style={{ fontSize: 11, color: "#5EEAD4", fontWeight: 400, letterSpacing: 0.5, marginBottom: 14, marginTop: -2 }}>
+            Decision Intelligence OS — Water Utilities Module
+          </div>
+        );
+      })()}
+
       {/* Situation */}
       <div style={{
         background: BG_CARD, border: `1px solid ${BORDER}`,

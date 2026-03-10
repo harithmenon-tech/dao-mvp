@@ -889,6 +889,9 @@ export default function App() {
     const p = { ...ob, createdAt: new Date().toISOString() };
     setProfile(p);
     store.set("dao-profile", p);
+    // Set active domain based on selected industry
+    const isWater = p.industry && p.industry.toLowerCase().includes("water");
+    localStorage.setItem('dao-active-domain', isWater ? 'water' : 'generic');
     const modeLabel = apiStatus === "live" ? "Live AI" : "Demo";
     setChatMsgs([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers — no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data — drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]);
   };
@@ -1494,7 +1497,12 @@ export default function App() {
           </button>
           <div>
             <div style={{ fontSize: 13, letterSpacing: 3, color: ACCENT, fontWeight: 600 }}>30GENS</div>
-            <div style={{ fontSize: 11, color: TEXT_DIM }}>{profile.org} • {profile.industry}</div>
+            <div style={{ fontSize: 11, color: TEXT_DIM }}>
+              {profile.org} • {profile.industry}
+              {localStorage.getItem('dao-active-domain') === 'water' && (
+                <span style={{ color: "#5EEAD4", marginLeft: 5, fontWeight: 400 }}>• Domain Active</span>
+              )}
+            </div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
