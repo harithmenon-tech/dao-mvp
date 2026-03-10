@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getBriefOverlay } from '../domain/domainContextInjector.js';
 
 // ── Design tokens matching App.jsx ──────────────────────────────
 const ACCENT    = "#0EA5E9";
@@ -166,8 +167,12 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
       const userMessage = `${orgLine}\n\n${journalBlock}\n\n${scanBlock}\n\nGenerate the executive brief JSON.`;
 
       // 3. Call the API
+      const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
+      const briefOverlay = getBriefOverlay(activeDomainId);
+      const fullBriefPrompt = briefOverlay ? briefOverlay + '\n\n' + userMessage : userMessage;
+
       try {
-        const raw = await callBriefAPI(BRIEF_SYSTEM, userMessage);
+        const raw = await callBriefAPI(BRIEF_SYSTEM, fullBriefPrompt);
         setRawText(raw);
 
         // 4. Parse JSON — strip markdown fences if present

@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dal-storage.js';
 import BriefView from './BriefView.jsx';
 import domainRegistry from './domain/domainRegistry.js';
+import { getScanOverlay } from './domain/domainContextInjector.js';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -1027,7 +1028,10 @@ export default function App() {
       } else {
         setScanResults(null);
         const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
-        const result = await callClaudeSync(sysPrompt, [
+        const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
+        const scanOverlay = getScanOverlay(activeDomainId);
+        const fullPrompt = scanOverlay ? scanOverlay + '\n\n' + sysPrompt : sysPrompt;
+        const result = await callClaudeSync(fullPrompt, [
           { role: "user", content: `Here is all the operational data from ${profile.org}. Run a full Enterprise Scan.\n\n${dataSummary}` }
         ]);
         setScanResults({ text: result, timestamp: new Date().toISOString() });
