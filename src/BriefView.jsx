@@ -188,24 +188,18 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
   const loadCopilot = async () => {
     setCopilotLoading(true);
     try {
-      const res = await fetchWithRetry("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1500,
-          system: "You are a strategic advisor. Be concise and direct.",
-          messages: [{
-            role: "user",
-            content: `Give me exactly 3 strategic options and a recommendation for this situation: ${brief?.situation || "the current business situation"}. Top risk: ${brief?.risks?.[0]?.text || "unknown"}. Format your response with clear Option 1, Option 2, Option 3 headings and a final Recommendation section.`
-          }],
-          stream: false
+          situation: brief?.situation || '',
+          risks: brief?.risks?.map(r => r.text) || [],
+          opportunities: brief?.opportunities?.map(o => o.text) || []
         })
       });
-      const data = await res.json();
-      const text = data.content?.[0]?.text || "";
-      if (!text) throw new Error("Empty response");
-      setCopilotResult({ raw: text });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+      setCopilotResult(data);
     } catch(e) {
       setCopilotResult({ error: "Could not generate options. Please try again." });
     }
@@ -353,15 +347,66 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
           ) : (
             <>
               {copilotResult && !copilotResult.error && (
-                <div style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8, padding: "16px",
-                  whiteSpace: "pre-wrap", lineHeight: 1.6,
-                  fontSize: 14, color: "#E2E8F0"
-                }}>
-                  {copilotResult.raw}
-                </div>
+                <>
+                  {/* Option cards */}
+                  {(copilotResult.options || []).map((opt, i) => (
+                    <div key={i} style={{
+                      background: BG_CARD,
+                      border: `1px solid ${ACCENT}30`,
+                      borderLeft: `3px solid ${ACCENT}`,
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      marginBottom: 10,
+                    }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: TEXT }}>
+                        {opt.title}
+                      </p>
+                      <p style={{ margin: "0 0 6px", fontSize: 13, color: TEXT, lineHeight: 1.5 }}>
+                        {opt.description}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: TEXT_DIM, lineHeight: 1.4 }}>
+                        <span style={{ fontWeight: 600 }}>Trade-off: </span>{opt.tradeoff}
+                      </p>
+                    </div>
+                  ))}
+
+                  {/* Recommendation block */}
+                  {copilotResult.recommendation && (
+                    <div style={{
+                      background: `${ACCENT}12`,
+                      border: `1px solid ${ACCENT}40`,
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      marginBottom: 10,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: ACCENT, marginBottom: 6 }}>
+                          RECOMMENDATION
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: TEXT, lineHeight: 1.5 }}>
+                          {copilotResult.recommendation}
+                        </p>
+                      </div>
+                      {/* Confidence badge */}
+                      {copilotResult.confidence && (
+                        <span style={{
+                          flexShrink: 0,
+                          fontSize: 11, fontWeight: 700,
+                          padding: "3px 12px", borderRadius: 20,
+                          background: `${confidenceColor(copilotResult.confidence)}20`,
+                          color: confidenceColor(copilotResult.confidence),
+                          alignSelf: "flex-start",
+                          marginTop: 18,
+                        }}>
+                          {copilotResult.confidence}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
