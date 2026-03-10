@@ -179,6 +179,43 @@ Schema: { options: [{title,description,tradeoff}], recommendation: string, confi
   }
 });
 
+app.post('/api/variance', async (req, res) => {
+  try {
+    const { decisionTitle, context, rationale, tier, reviewNotes, uploadedDataSummary, activeDomain } = req.body;
+
+    // Token cap: truncate uploadedDataSummary if > 800 chars
+    const dataSummary = (uploadedDataSummary || '').length > 800
+      ? (uploadedDataSummary || '').slice(0, 800)
+      : (uploadedDataSummary || '');
+
+    // Domain overlay injection
+    let domainPrefix = '';
+    if (activeDomain && activeDomain !== 'generic') {
+      domainPrefix = `Domain context: This organisation operates in the ${activeDomain} sector. Apply domain-appropriate expertise when assessing whether this decision produced Better, Same, or Worse results.\n`;
+    }
+
+    const userPrompt = `${domainPrefix}Title:${decisionTitle || ''}|Tier:${tier || ''}|Context:${context || ''}|Rationale:${rationale || ''}|Review notes:${reviewNotes || ''}|Operational data:${dataSummary}\nReturn:{"variance":"Better"|"Same"|"Worse","confidence":"High"|"Medium"|"Low","reasoning":"Sentence one. Sentence two.","dataPoints":["point1"]}`;
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 512,
+      system: 'You are a decision intelligence analyst. Assess whether this decision produced Better, Same, or Worse results than intended. Return ONLY valid JSON. No preamble, no markdown, no backticks.',
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = message.content[0].text;
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return res.status(200).json(parsed);
+  } catch (err) {
+    console.error('[/api/variance error]', err.message, err.stack);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
