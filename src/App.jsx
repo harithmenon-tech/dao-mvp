@@ -1499,7 +1499,7 @@ export default function App() {
               rationale: decision.rationale || '',
               tier: decision.tier || '',
               reviewNotes: decision.reviewNotes || '',
-              uploadedDataSummary: (uploadedDataSummary || '').slice(0, 800),
+              uploadedDataSummary: '',
               activeDomain: activeDomain || 'generic'
             })
           });
@@ -2134,7 +2134,15 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
                         <div>
                           <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: TEXT_DIM }}>{entry.id}</span>
-                          <h4 style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}>{entry.statement}</h4>
+                          <h4 style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}>{entry.statement}
+                            {copilotReadyIds.includes(entry.id) && (
+                              <span style={{fontSize:'10px',background:'#2a2a5a',color:'#8888ff',
+                                border:'1px solid #4a4a8a',borderRadius:'4px',padding:'2px 6px',
+                                marginLeft:'8px',verticalAlign:'middle'}}>
+                                ⚡ Copilot Ready
+                              </span>
+                            )}
+                          </h4>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                           {isOverdue && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${RED}20`, color: RED }}>Overdue</span>}
@@ -2185,6 +2193,24 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                    {copilotVariance && copilotVariance[reviewModal?.id] && (
+                      <div style={{background:'#1a1a2e',border:'1px solid #4a4a8a',borderRadius:'8px',
+                        padding:'12px',marginBottom:'12px'}}>
+                        <div style={{fontSize:'11px',color:'#8888bb',marginBottom:'6px',
+                          textTransform:'uppercase',letterSpacing:'1px'}}>
+                          ⚡ Copilot Suggestion
+                        </div>
+                        <div style={{fontSize:'13px',color:'#e0e0ff',marginBottom:'4px'}}>
+                          <strong>{copilotVariance[reviewModal.id].variance}</strong>
+                          <span style={{color:'#8888bb',marginLeft:'8px'}}>
+                            ({copilotVariance[reviewModal.id].confidence} confidence)
+                          </span>
+                        </div>
+                        <div style={{fontSize:'12px',color:'#aaaacc',lineHeight:'1.4'}}>
+                          {copilotVariance[reviewModal.id].reasoning}
+                        </div>
+                      </div>
+                    )}
                     <div style={{ marginBottom: 16 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 8 }}>Outcome vs Expected (required)</span>
                       <div style={{ display: "flex", gap: 16 }}>
