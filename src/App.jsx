@@ -1331,6 +1331,16 @@ export default function App() {
       lesson: reviewForm.lesson,
       variance: reviewForm.variance,
       version: 1,
+      copilotProposal: copilotVariance && copilotVariance[reviewModal?.id]
+        ? copilotVariance[reviewModal.id].variance
+        : null,
+      copilotConfidence: copilotVariance && copilotVariance[reviewModal?.id]
+        ? copilotVariance[reviewModal.id].confidence
+        : null,
+      humanFinalChoice: reviewForm.variance,
+      overrideOccurred: copilotVariance && copilotVariance[reviewModal?.id]
+        ? copilotVariance[reviewModal.id].variance !== reviewForm.variance
+        : false,
     };
     const updated = journal.map(e => {
       if (e.id !== reviewModal.id) return e;
