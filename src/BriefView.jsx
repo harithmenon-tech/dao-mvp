@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getBriefOverlay } from '../domain/domainContextInjector.js';
+import { getBriefOverlay } from './domain/domainContextInjector.js';
 
 // ── Design tokens matching App.jsx ──────────────────────────────
 const ACCENT    = "#0EA5E9";
