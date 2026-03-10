@@ -791,6 +791,9 @@ export default function App() {
   const [cf, setCf] = useState({ name: "", description: "" });
   const [copilotVariance, setCopilotVariance] = useState(null);
   const [copilotReadyIds, setCopilotReadyIds] = useState([]);
+  const [decisionHealth, setDecisionHealth] = useState(null);
+  const [healthExpanded, setHealthExpanded] = useState(false);
+  const [humanOverrode, setHumanOverrode] = useState(false);
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -830,6 +833,7 @@ export default function App() {
     if (c) setChatMsgs(c);
     setLoading(false);
     preloadVarianceForDueDecisions();
+    checkDecisionHealth();
   }, []);
 
   // Persist
@@ -996,6 +1000,7 @@ export default function App() {
       }
     }
     setDatasets(newDatasets);
+    checkDecisionHealth();
     return newDatasets;
   };
 
@@ -1517,6 +1522,43 @@ export default function App() {
       console.warn('[DAO] preloadVarianceForDueDecisions error:', err);
     }
   };
+
+  async function checkDecisionHealth() {
+    try {
+      const stored = localStorage.getItem('dao-journal');
+      const allDecisions = stored ? JSON.parse(stored) : [];
+      const active = allDecisions.filter(d =>
+        d.status === 'Confirmed' || d.status === 'Draft'
+      );
+      if (active.length === 0) {
+        setDecisionHealth({ results: [] });
+        return;
+      }
+      const truncated = active.map(d => ({
+        ...d,
+        context: (d.context || '').slice(0, 200),
+        rationale: (d.rationale || '').slice(0, 200)
+      }));
+      const stored2 = localStorage.getItem('dao-uploaded-summary');
+      const dataSummary = stored2 ? stored2.slice(0, 800) : '';
+      const activeDomainKey = localStorage.getItem('dao-active-domain') || 'generic';
+      const res = await fetch('/api/decision-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decisions: truncated,
+          dataSummary,
+          activeDomain: activeDomainKey
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDecisionHealth(data);
+      }
+    } catch (err) {
+      console.warn('[DAO] checkDecisionHealth error:', err);
+    }
+  }
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
