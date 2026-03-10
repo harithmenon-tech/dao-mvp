@@ -789,6 +789,8 @@ export default function App() {
   const [changeProjects, setChangeProjects] = useState(store.get("dao-change-projects") || []);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [cf, setCf] = useState({ name: "", description: "" });
+  const [copilotVariance, setCopilotVariance] = useState(null);
+  const [copilotReadyIds, setCopilotReadyIds] = useState([]);
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -827,6 +829,7 @@ export default function App() {
     if (s) setScanResults(s);
     if (c) setChatMsgs(c);
     setLoading(false);
+    preloadVarianceForDueDecisions();
   }, []);
 
   // Persist
@@ -1473,6 +1476,46 @@ export default function App() {
     setScanMode("operational");
     setChangeProjects([]);
     setShowChangeForm(false);
+  };
+
+  async function preloadVarianceForDueDecisions() {
+    try {
+      const stored = localStorage.getItem('dao-journal');
+      const allDecisions = stored ? JSON.parse(stored) : [];
+      const today = new Date();
+      const due = allDecisions
+        .filter(d => d.status === 'Confirmed' && d.reviewDate && new Date(d.reviewDate) <= today)
+        .slice(0, 3);
+      if (due.length === 0) return;
+      const newReadyIds = [];
+      for (const decision of due) {
+        try {
+          const res = await fetch('/api/variance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decisionTitle: decision.title || '',
+              context: decision.context || '',
+              rationale: decision.rationale || '',
+              tier: decision.tier || '',
+              reviewNotes: decision.reviewNotes || '',
+              uploadedDataSummary: (uploadedDataSummary || '').slice(0, 800),
+              activeDomain: activeDomain || 'generic'
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCopilotVariance(prev => ({ ...prev, [decision.id]: data }));
+            newReadyIds.push(decision.id);
+          }
+        } catch (err) {
+          console.warn('[DAO] Variance preload failed for', decision.id, err);
+        }
+      }
+      setCopilotReadyIds(prev => [...new Set([...prev, ...newReadyIds])]);
+    } catch (err) {
+      console.warn('[DAO] preloadVarianceForDueDecisions error:', err);
+    }
   };
 
   const navItems = [
