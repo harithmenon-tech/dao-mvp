@@ -10,6 +10,7 @@
     "demo": "npm run build && node server/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "jspdf": "^2.5.1",

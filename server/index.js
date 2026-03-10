@@ -141,6 +141,44 @@ app.post("/api/claude", async (req, res) => {
   }
 });
 
+app.post('/api/copilot', async (req, res) => {
+  try {
+    const { situation, risks, opportunities } = req.body;
+    if (!situation) {
+      return res.status(400).json({ error: 'situation field is required' });
+    }
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const prompt = `You are an executive decision advisor.
+Given the following executive brief:
+Situation: ${situation}
+Top Risks: ${(risks || []).join('; ')}
+Top Opportunities: ${(opportunities || []).join('; ')}
+Generate exactly 3 strategic options for this executive to consider.
+For each option provide:
+- title: a concise label (maximum 8 words)
+- description: exactly 2 sentences explaining what this option involves
+- tradeoff: exactly 1 sentence on the main risk, cost, or constraint
+Then provide:
+- recommendation: 2 sentences identifying which option best balances the opportunity and risk
+- confidence: one of exactly these three values: High, Medium, or Low
+Respond in valid JSON only. No preamble, no markdown fences.
+Schema: { options: [{title,description,tradeoff}], recommendation: string, confidence: string }`;
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const raw = message.content[0].text;
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return res.status(200).json(parsed);
+  } catch (err) {
+    console.error('[/api/copilot error]', err.message, err.stack);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
