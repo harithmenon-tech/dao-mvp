@@ -1235,10 +1235,9 @@ export default function App() {
       confidence: jf.confidence,
       expected: jf.expected,
       owner: jf.owner,
-      review_date: jf.review_date,
-      reviewDate: new Date(Date.now() + jf.reviewDays * 86400000).toISOString().split("T")[0],
+      review_Date: new Date(Date.now() + jf.reviewDays * 86400000).toISOString().split("T")[0],
       decidedBy: profile.name,
-      status: "pending",
+      status: "Confirmed",
       actualOutcome: "",
       learning: "",
       rationale: "",
@@ -1387,7 +1386,7 @@ export default function App() {
       gap(4);
       const activeF = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
       const totalExp = activeF.reduce((s, f) => s + f.maxAmount, 0);
-      const overdue = journal.filter(j => new Date(j.reviewDate) < new Date() && j.status !== "resolved").length;
+      const overdue = journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length;
       line(`Active Findings: ${activeF.length}   |   Resolved: ${resolvedFindings.length}   |   Financial Exposure: RM ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
       gap(2);
       line(`Decisions Logged: ${journal.length}   |   Overdue Reviews: ${overdue}   |   Revenue Opportunities: ${revenueFindings.length}`, 9, false, [226, 232, 240]);
@@ -1431,7 +1430,7 @@ export default function App() {
         journal.slice(0, 5).forEach((j, i) => {
           line(`${i + 1}.  [TIER ${j.tier}  |  ${j.type}]  ${j.statement}`, 9, false, [226, 232, 240]);
           gap(1);
-          line(`     Date: ${j.date}  |  Status: ${j.status}  |  Review by: ${j.reviewDate}`, 8, false, [148, 163, 184]);
+          line(`     Date: ${j.date}  |  Status: ${j.status}  |  Review by: ${j.review_date}`, 8, false, [148, 163, 184]);
           gap(3);
         });
         rule();
@@ -1494,7 +1493,7 @@ export default function App() {
       const allDecisions = stored ? JSON.parse(stored) : [];
       const today = new Date();
       const due = allDecisions
-        .filter(d => d.status === 'Confirmed' && d.reviewDate && new Date(d.reviewDate) <= today)
+        .filter(d => d.status === 'Confirmed' && d.review_date && new Date(d.review_date) <= today)
         .slice(0, 3);
       if (due.length === 0) return;
       const newReadyIds = [];
@@ -1510,12 +1509,12 @@ export default function App() {
               tier: decision.tier || '',
               reviewNotes: decision.reviewNotes || '',
               uploadedDataSummary: '',
-              activeDomain: activeDomain || 'generic'
+              activeDomain: activeDomainId || 'generic'
             })
           });
           if (res.ok) {
             const data = await res.json();
-            setCopilotVariance(prev => ({ ...prev, [decision.id]: data }));
+            setCopilotReadyIds(prev => [...prev, decision.id]);
             newReadyIds.push(decision.id);
           }
         } catch (err) {
@@ -1838,8 +1837,8 @@ export default function App() {
                 {[
                   { label: "ACTIVE FINDINGS", value: parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length, color: parsedFindings.filter(f => !resolvedFindings.includes(f.id) && f.tier === "3").length > 0 ? "#EF4444" : "#F59E0B", sub: `${resolvedFindings.length} resolved` },
                   { label: "FINANCIAL EXPOSURE", value: `RM ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
-                  { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "pending").length} pending review` },
-                  { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.reviewDate) < new Date() && j.status !== "resolved").length, color: "#F59E0B", sub: "need attention" }
+                  { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "Confirmed").length} pending review` },
+                  { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length, color: "#F59E0B", sub: "need attention" }
                 ].map((stat, i) => (
                   <div key={i} style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16 }}>
                     <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>{stat.label}</div>
@@ -2269,7 +2268,7 @@ export default function App() {
                         <span>{entry.date}</span>
                         <span>{entry.type}</span>
                         <span>{entry.confidence === "high" ? "HIGH" : entry.confidence === "moderate" ? "MODERATE" : "LOW"}</span>
-                        <span>Review: {entry.reviewDate}</span>
+                        <span>Review: {entry.review_date}</span>
                         <span style={{ color: entry.status === "Reviewed" ? GREEN : entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
                           {entry.status}
                         </span>
@@ -2283,7 +2282,7 @@ export default function App() {
                             setReviewModal(entry);
                             setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" });
                             const activeDomain = localStorage.getItem('dao-active-domain') || '';
-                            const reviewDate = entry.reviewDate || entry.review_date || '';
+                            const reviewDate = entry.review_date || entry.review_date || '';
                             if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
                               setCopilotVariance(prev => ({...prev, loading: true}));
                               fetch('/api/variance', {
