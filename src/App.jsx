@@ -2336,7 +2336,7 @@ export default function App() {
                         ))}
                       </div>
                     </div>
-                    {copilotVariance && copilotVariance[reviewModal?.id] && (
+                    {copilotVariance && copilotVariance.variance && !copilotVariance.loading && (
                       <div style={{background:'#1a1a2e',border:'1px solid #4a4a8a',borderRadius:'8px',
                         padding:'12px',marginBottom:'12px'}}>
                         <div style={{fontSize:'11px',color:'#8888bb',marginBottom:'6px',
@@ -2344,13 +2344,13 @@ export default function App() {
                           ⚡ Copilot Suggestion
                         </div>
                         <div style={{fontSize:'13px',color:'#e0e0ff',marginBottom:'4px'}}>
-                          <strong>{copilotVariance[reviewModal.id].variance}</strong>
+                          <strong>{copilotVariance.variance}</strong>
                           <span style={{color:'#8888bb',marginLeft:'8px'}}>
-                            ({copilotVariance[reviewModal.id].confidence} confidence)
+                            ({copilotVariance.confidence} confidence)
                           </span>
                         </div>
                         <div style={{fontSize:'12px',color:'#aaaacc',lineHeight:'1.4'}}>
-                          {copilotVariance[reviewModal.id].reasoning}
+                          {copilotVariance.reasoning}
                         </div>
                       </div>
                     )}
