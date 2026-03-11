@@ -1352,6 +1352,7 @@ export default function App() {
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
     setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "" });
+    setHumanOverrode(false);
   };
 
   const generateBoardReport = async () => {
@@ -2284,7 +2285,39 @@ export default function App() {
                       {entry.expected && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Expected:</strong> {entry.expected}</p>}
                       {inQueue && (
                         <div style={{ marginTop: 12 }}>
-                          <button onClick={() => { setReviewModal(entry); setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" }); }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>📝 Review</button>
+                          <button onClick={() => {
+                            setReviewModal(entry);
+                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" });
+                            const activeDomain = localStorage.getItem('dao-active-domain') || '';
+                            const reviewDate = entry.reviewDate || entry.review_date || '';
+                            if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
+                              setCopilotVariance(prev => ({...prev, loading: true}));
+                              fetch('/api/variance', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({
+                                  decisionTitle: entry.text || entry.title || '',
+                                  context: entry.context || entry.evidence || '',
+                                  rationale: entry.rationale || entry.assumptions || '',
+                                  tier: entry.tier || 'Tier 1',
+                                  reviewNotes: '',
+                                  uploadedDataSummary: '',
+                                  activeDomain
+                                })
+                              })
+                              .then(r => r.json())
+                              .then(data => {
+                                setCopilotVariance({
+                                  variance: data.variance,
+                                  confidence: data.confidence,
+                                  reasoning: data.reasoning,
+                                  loading: false
+                                });
+                                console.log('[v1.3] Copilot variance loaded:', data);
+                              })
+                              .catch(() => setCopilotVariance({variance:null,confidence:null,reasoning:null,loading:false}));
+                            }
+                          }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>📝 Review</button>
                         </div>
                       )}
                     </div>
@@ -2334,12 +2367,26 @@ export default function App() {
                           <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, fontWeight: reviewForm.variance === v ? 700 : 400, color: reviewForm.variance === v ? (v === "Better" ? GREEN : v === "Worse" ? RED : AMBER) : TEXT_DIM }}>
                             <input type="radio" name="variance"
                               checked={reviewForm.variance === v}
-                              onChange={() => setReviewForm(f => ({...f, variance: v}))}
+                              onChange={() => { setReviewForm(f => ({...f, variance: v})); setHumanOverrode(true); }}
                               style={{ accentColor: v === "Better" ? GREEN : v === "Worse" ? RED : AMBER }}
                             /> {v === "Better" ? "⬆ Better" : v === "Same" ? "➡ Same" : "⬇ Worse"}
                           </label>
                         ))}
                       </div>
+                      {copilotVariance && copilotVariance.loading && (
+                        <p style={{color:'#888',fontSize:'0.85rem',marginTop:'8px'}}>Copilot is analysing...</p>
+                      )}
+                      {copilotVariance && copilotVariance.variance && !copilotVariance.loading && (
+                        <div style={{background:'#E8F4FD',borderRadius:'8px',padding:'12px',marginTop:'8px'}}>
+                          <p style={{fontWeight:'bold',margin:'0 0 4px 0'}}>
+                            Copilot suggests: {copilotVariance.variance} ({copilotVariance.confidence} confidence)
+                          </p>
+                          <p style={{margin:'0 0 4px 0',fontSize:'0.9rem'}}>{copilotVariance.reasoning}</p>
+                          <p style={{margin:0,fontSize:'0.8rem',color:'#888'}}>
+                            Accept by saving as-is, or change the selection above to override.
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <label style={labelStyle}>
                       <span style={labelText}>Actual Outcome *</span>
@@ -2351,7 +2398,11 @@ export default function App() {
                     </label>
                     <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                       <button onClick={submitReview} disabled={!reviewForm.actual_outcome.trim() || !reviewForm.lesson.trim() || !reviewForm.variance} style={{ ...btnPrimary, opacity: reviewForm.actual_outcome.trim() && reviewForm.lesson.trim() && reviewForm.variance ? 1 : 0.4 }}>Submit Review</button>
-                      <button onClick={() => setReviewModal(null)} style={btnSmall}>Cancel</button>
+                      <button onClick={() => {
+                        setReviewModal(null);
+                        setCopilotVariance({variance:null,confidence:null,reasoning:null,loading:false});
+                        setHumanOverrode(false);
+                      }} style={btnSmall}>Cancel</button>
                     </div>
                   </div>
                 </div>
