@@ -1235,7 +1235,7 @@ export default function App() {
       confidence: jf.confidence,
       expected: jf.expected,
       owner: jf.owner,
-      review_Date: new Date(Date.now() + jf.reviewDays * 86400000).toISOString().split("T")[0],
+      review_date: jf.review_date,
       decidedBy: profile.name,
       status: "Confirmed",
       actualOutcome: "",
