@@ -789,7 +789,7 @@ export default function App() {
   const [changeProjects, setChangeProjects] = useState(store.get("dao-change-projects") || []);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [cf, setCf] = useState({ name: "", description: "" });
-  const [copilotVariance, setCopilotVariance] = useState(null);
+  const [copilotVariance, setCopilotVariance] = useState({variance:null,confidence:null,reasoning:null,loading:false});
   const [copilotReadyIds, setCopilotReadyIds] = useState([]);
   const [decisionHealth, setDecisionHealth] = useState(null);
   const [healthExpanded, setHealthExpanded] = useState(false);
@@ -1331,16 +1331,10 @@ export default function App() {
       lesson: reviewForm.lesson,
       variance: reviewForm.variance,
       version: 1,
-      copilotProposal: copilotVariance && copilotVariance[reviewModal?.id]
-        ? copilotVariance[reviewModal.id].variance
-        : null,
-      copilotConfidence: copilotVariance && copilotVariance[reviewModal?.id]
-        ? copilotVariance[reviewModal.id].confidence
-        : null,
+      copilotProposal: copilotVariance.variance || null,
+      copilotConfidence: copilotVariance.confidence || null,
       humanFinalChoice: reviewForm.variance,
-      overrideOccurred: copilotVariance && copilotVariance[reviewModal?.id]
-        ? copilotVariance[reviewModal.id].variance !== reviewForm.variance
-        : false,
+      overrideOccurred: humanOverrode,
     };
     const updated = journal.map(e => {
       if (e.id !== reviewModal.id) return e;
