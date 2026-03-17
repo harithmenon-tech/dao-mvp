@@ -772,10 +772,10 @@ export default function App() {
   const [rationaleLoading, setRationaleLoading] = useState(false);
   const [checkedFlags, setCheckedFlags] = useState([]);
   const [dalErrors, setDalErrors] = useState([]);
-  const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
+  const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
   const [reviewTab, setReviewTab] = useState("all");
   const [reviewModal, setReviewModal] = useState(null);
-  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "", variance: "" });
+  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
@@ -1394,7 +1394,10 @@ export default function App() {
       learning: "",
       rationale: "",
       context: "",
-      challenge_flags: []
+      challenge_flags: [],
+      confidenceScore: jf.confidenceScore ?? 3,
+      tags: (jf.tagsRaw || "").split(",").map(t => t.trim()).filter(Boolean),
+      lifecycleStatus: jf.lifecycleStatus || "Active"
     };
 
     // Tier 2+ → route through Challenge Check modal
@@ -1411,7 +1414,7 @@ export default function App() {
     saveJournal(updated);
     logAudit(profile.name, entry.id, 'CREATE', 1);
     setShowJournalForm(false);
-    setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 });
+    setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
 
     // Theory of Mind: trigger Decision Profile after 10 entries
     if (updated.length >= 10 && !profileLoading) {
@@ -1481,6 +1484,7 @@ export default function App() {
       actual_outcome: reviewForm.actual_outcome,
       lesson: reviewForm.lesson,
       variance: reviewForm.variance,
+      reviewNotes: reviewForm.reviewNotes || "",
       version: 1,
       copilotProposal: copilotVariance.variance || null,
       copilotConfidence: copilotVariance.confidence || null,
@@ -1490,13 +1494,14 @@ export default function App() {
     const updated = journal.map(e => {
       if (e.id !== reviewModal.id) return e;
       const reviews = [...(e.reviews ?? []), reviewEntry];
-      return { ...e, reviews, status: "Reviewed" };
+      const newLifecycleStatus = reviewForm.updateStatus || e.lifecycleStatus || "Active";
+      return { ...e, reviews, status: "Reviewed", lifecycleStatus: newLifecycleStatus };
     });
     setJournal(updated);
     saveJournal(updated);
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
-    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "" });
+    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
     setHumanOverrode(false);
   };
 
@@ -2500,6 +2505,37 @@ export default function App() {
                       </label>
                     </>
                   )}
+                  <label style={labelStyle}>
+                    <span style={labelText}>Decision Confidence (1 = Low, 5 = High)</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <input
+                        type="range" min={1} max={5} step={1}
+                        value={jf.confidenceScore}
+                        onChange={e => setJf({...jf, confidenceScore: parseInt(e.target.value)})}
+                        style={{ flex: 1, accentColor: ACCENT }}
+                      />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: TEXT, minWidth: 36, textAlign: "right" }}>{jf.confidenceScore} / 5</span>
+                    </div>
+                  </label>
+                  <label style={labelStyle}>
+                    <span style={labelText}>Tags (comma-separated)</span>
+                    <input
+                      type="text"
+                      value={jf.tagsRaw}
+                      onChange={e => setJf({...jf, tagsRaw: e.target.value})}
+                      placeholder="e.g. budget, Q2, risk"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={labelStyle}>
+                    <span style={labelText}>Status</span>
+                    <select value={jf.lifecycleStatus} onChange={e => setJf({...jf, lifecycleStatus: e.target.value})} style={inputStyle}>
+                      <option value="Active">Active</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Monitoring">Monitoring</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </label>
                   {dalErrors.length > 0 && (
                     <div style={{ color: "#EF4444", fontSize: 12, marginBottom: 8 }}>
                       {dalErrors.map((err, i) => <div key={i}>⚠ {err}</div>)}
@@ -2615,6 +2651,13 @@ export default function App() {
                             background: entry.tier === "3" ? `${RED}20` : entry.tier === "2" ? `${AMBER}20` : `${GREEN}20`,
                             color: entry.tier === "3" ? RED : entry.tier === "2" ? AMBER : GREEN
                           }}>Tier {entry.tier}</span>
+                          {entry.lifecycleStatus && (
+                            <span style={{
+                              fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20,
+                              background: entry.lifecycleStatus === "Draft" ? "#94A3B820" : entry.lifecycleStatus === "Active" ? "#0EA5E920" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B20" : "#10B98120",
+                              color: entry.lifecycleStatus === "Draft" ? "#94A3B8" : entry.lifecycleStatus === "Active" ? "#0EA5E9" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B" : "#10B981"
+                            }}>{entry.lifecycleStatus}</span>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: TEXT_DIM }}>
@@ -2629,11 +2672,18 @@ export default function App() {
                       {entry.evidence && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "8px 0 0", lineHeight: 1.5 }}><strong>Evidence:</strong> {entry.evidence}</p>}
                       {entry.assumptions && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Assumptions:</strong> {entry.assumptions}</p>}
                       {entry.expected && <p style={{ fontSize: 13, color: TEXT_DIM, margin: "4px 0 0", lineHeight: 1.5 }}><strong>Expected:</strong> {entry.expected}</p>}
+                      {entry.tags && entry.tags.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                          {entry.tags.map((tag, ti) => (
+                            <span key={ti} style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: "#1E293B", color: "#94A3B8", border: "1px solid #1E3A5F", fontWeight: 500 }}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
                       {inQueue && (
                         <div style={{ marginTop: 12 }}>
                           <button onClick={() => {
                             setReviewModal(entry);
-                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "" });
+                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: entry.lifecycleStatus || "Active" });
                             const activeDomain = localStorage.getItem('dao-active-domain') || '';
                             const reviewDate = entry.review_date || entry.review_date || '';
                             if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
@@ -2730,6 +2780,19 @@ export default function App() {
                     <label style={labelStyle}>
                       <span style={labelText}>Lesson *</span>
                       <textarea value={reviewForm.lesson} onChange={e => setReviewForm({...reviewForm, lesson: e.target.value})} placeholder="What would you do differently?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelText}>Review Notes (optional)</span>
+                      <textarea value={reviewForm.reviewNotes} onChange={e => setReviewForm({...reviewForm, reviewNotes: e.target.value})} placeholder="What changed? What did you learn?" rows={3} style={{...inputStyle, resize: "vertical"}}/>
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelText}>Update Status</span>
+                      <select value={reviewForm.updateStatus || reviewModal?.lifecycleStatus || "Active"} onChange={e => setReviewForm({...reviewForm, updateStatus: e.target.value})} style={inputStyle}>
+                        <option value="Active">Active</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Monitoring">Monitoring</option>
+                        <option value="Closed">Closed</option>
+                      </select>
                     </label>
                     <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                       <button onClick={submitReview} disabled={!reviewForm.actual_outcome.trim() || !reviewForm.lesson.trim() || !reviewForm.variance} style={{ ...btnPrimary, opacity: reviewForm.actual_outcome.trim() && reviewForm.lesson.trim() && reviewForm.variance ? 1 : 0.4 }}>Submit Review</button>
