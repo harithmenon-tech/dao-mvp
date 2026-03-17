@@ -318,6 +318,53 @@ Provide exactly 3 priorities. Return only valid JSON.`;
   }
 });
 
+app.post('/api/generate-brief', async (req, res) => {
+  try {
+    const { findings, scanType, domainContext, uploadedSummary } = req.body;
+    if (!findings || findings.length === 0) {
+      return res.status(400).json({ error: 'No findings provided' });
+    }
+    const findingSummary = findings.slice(0, 12).map((f, i) =>
+      `${i + 1}. [${f.severity || 'MEDIUM'}] ${f.title || f.finding || JSON.stringify(f)}`
+    ).join('\n');
+    const domainNote = domainContext
+      ? `\nOrganisation context: ${domainContext}` : '';
+    const dataNote = uploadedSummary
+      ? `\nData context: ${uploadedSummary}` : '';
+    const prompt = `You are preparing an Executive Brief for the CEO.
+Scan type: ${scanType || 'operational'}${domainNote}${dataNote}
+FINDINGS:
+${findingSummary}
+Generate a concise executive brief in this exact JSON format with no preamble or markdown:
+{
+  "headline": "One sentence executive headline",
+  "executiveSummary": "2-3 paragraph executive summary",
+  "keyFindings": [
+    { "title": "finding title", "detail": "one sentence detail", "severity": "HIGH|MEDIUM|LOW" }
+  ],
+  "strategicImplications": "2-3 sentences on strategic implications",
+  "recommendedActions": [
+    { "action": "action description", "owner": "CEO|COO|CFO|CTO", "timeframe": "immediate|this week|this month" }
+  ],
+  "generatedAt": "${new Date().toISOString()}"
+}
+Provide exactly 3 keyFindings and 3 recommendedActions. Return only valid JSON.`;
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1500,
+      system: 'You are a strategic executive advisor. Always respond with valid JSON only.',
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const raw = response.content[0].text.trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const brief = JSON.parse(clean);
+    res.json({ success: true, brief });
+  } catch (err) {
+    console.error('/api/generate-brief error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
