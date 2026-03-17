@@ -216,6 +216,13 @@ const store = {
   }
 };
 
+// ── loadJournal — reads decision journal from localStorage ──────
+function loadJournal() {
+  try {
+    return JSON.parse(localStorage.getItem('dao-journal') || '[]');
+  } catch { return []; }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // CLAUDE API — with timeouts and proper error handling
 // ═══════════════════════════════════════════════════════════════
@@ -814,7 +821,7 @@ export default function App() {
   const [sideOpen, setSideOpen] = useState(false);
   const [datasets, setDatasets] = useState([]);
   const [journal, setJournal] = useState([]);
-  const [chatMsgs, setChatMsgs] = useState([]);
+  const [chatMsgs, setChatMsgs] = useState(JSON.parse(localStorage.getItem('dao-chief-history') || '[]'));
   const [scanResults, setScanResults] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -924,6 +931,7 @@ export default function App() {
   useEffect(() => { if (journal.length) store.set("dao-journal", journal);
     if (journal.length > 0) { checkDecisionHealth(); } }, [journal]);
   useEffect(() => { if (chatMsgs.length) store.set("dao-chat", chatMsgs); }, [chatMsgs]);
+  useEffect(() => { localStorage.setItem('dao-chief-history', JSON.stringify(chatMsgs)); }, [chatMsgs]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
   useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
@@ -1349,7 +1357,13 @@ export default function App() {
     setStreaming(true);
 
     try {
-      const sysPrompt = buildSystemPrompt();
+      const chiefContext = [
+        `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
+        `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
+        `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
+        `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`
+      ].join('\n\n');
+      const sysPrompt = buildSystemPrompt() + '\n\n' + chiefContext;
       // Include all data context if available
       let contextMsg = fullContent;
       const isFirstMessage = newMsgs.filter(m => m.role === "user").length === 1;
@@ -1917,6 +1931,46 @@ export default function App() {
           {/* ═══════ CHAT VIEW ═══════ */}
           {view === "chat" && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              {/* Chat sub-header: Chief Status + Clear History */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 16px", borderBottom: `1px solid ${BORDER}20` }}>
+                {/* Chief Status Indicator */}
+                <div style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 500, color: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : TEXT_DIM }}>
+                  <span style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    marginRight: 6,
+                    background: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : "#6B7280"
+                  }}/>
+                  {apiStatus === 'live' ? 'Chief Ready' : apiStatus === 'demo' ? 'Demo Mode' : 'Checking...'}
+                </div>
+                {/* Clear History button */}
+                {chatMsgs.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setChatMsgs([]);
+                      localStorage.removeItem('dao-chief-history');
+                    }}
+                    style={{
+                      fontSize: 11,
+                      color: TEXT_DIM,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontFamily: "'DM Sans', sans-serif",
+                      transition: "color 0.15s"
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = RED; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = TEXT_DIM; }}
+                    title="Clear chat history"
+                  >
+                    🗑 Clear History
+                  </button>
+                )}
+              </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 100px" }}>
                 {chatMsgs.length === 0 && (
                   <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
@@ -2000,6 +2054,101 @@ export default function App() {
                   ))}
                 </div>
               )}
+
+              {/* Suggested Prompt Chips */}
+              {(() => {
+                const suggestedPrompts = [
+                  "What are my riskiest decisions?",
+                  "Summarise my decision patterns",
+                  "Which decisions need review?",
+                  "What should I prioritise this week?",
+                  "Show me stale decisions"
+                ];
+                const handleChipSend = async (promptText) => {
+                  if (streaming) return;
+                  setChatInput("");
+                  const newMsgs = [...chatMsgs, { role: "user", content: promptText }];
+                  setChatMsgs(newMsgs);
+                  setStreaming(true);
+                  try {
+                    const chiefCtx = [
+                      `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
+                      `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
+                      `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
+                      `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`
+                    ].join('\n\n');
+                    const sysP = buildSystemPrompt() + '\n\n' + chiefCtx;
+                    const history = newMsgs.slice(-6).map(m => ({ role: m.role, content: m.content }));
+                    const streamMsgs = [...newMsgs, { role: "assistant", content: "" }];
+                    setChatMsgs(streamMsgs);
+                    await callClaude(sysP, history, (partial) => {
+                      setChatMsgs(prev => {
+                        const updated = [...prev];
+                        updated[updated.length - 1] = { role: "assistant", content: partial };
+                        return updated;
+                      });
+                    });
+                  } catch (e) {
+                    setChatMsgs(prev => {
+                      const updated = [...prev];
+                      if (updated.length > 0 && updated[updated.length - 1].role === "assistant" && !updated[updated.length - 1].content) {
+                        updated[updated.length - 1] = { role: "assistant", content: `Error: ${e.message}` };
+                      } else {
+                        updated.push({ role: "assistant", content: `Error: ${e.message}` });
+                      }
+                      return updated;
+                    });
+                  }
+                  setStreaming(false);
+                };
+                return (
+                  <div style={{
+                    padding: "8px 16px 0",
+                    display: "flex",
+                    gap: 8,
+                    overflowX: "auto",
+                    flexWrap: "nowrap",
+                    scrollbarWidth: "none"
+                  }}>
+                    {suggestedPrompts.map((prompt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleChipSend(prompt)}
+                        disabled={streaming}
+                        style={{
+                          flexShrink: 0,
+                          padding: "5px 12px",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          background: BG_SURFACE,
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: 20,
+                          color: TEXT_DIM,
+                          cursor: streaming ? "not-allowed" : "pointer",
+                          whiteSpace: "nowrap",
+                          fontFamily: "'DM Sans', sans-serif",
+                          transition: "all 0.15s",
+                          opacity: streaming ? 0.5 : 1
+                        }}
+                        onMouseEnter={e => {
+                          if (!streaming) {
+                            e.currentTarget.style.background = `${ACCENT}15`;
+                            e.currentTarget.style.color = ACCENT;
+                            e.currentTarget.style.borderColor = `${ACCENT}50`;
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = BG_SURFACE;
+                          e.currentTarget.style.color = TEXT_DIM;
+                          e.currentTarget.style.borderColor = BORDER;
+                        }}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Chat Input */}
               <div style={{
