@@ -269,6 +269,55 @@ app.post('/api/decision-health', async (req, res) => {
   }
 });
 
+app.post('/api/situation', async (req, res) => {
+  try {
+    const { findings, scanType, domainContext } = req.body;
+    if (!findings || findings.length === 0) {
+      return res.status(400).json({ error: 'No findings provided' });
+    }
+    const findingSummary = findings.slice(0, 10).map((f, i) =>
+      `${i + 1}. [${f.severity || 'MEDIUM'}] ${f.title || f.finding || JSON.stringify(f)}`
+    ).join('\n');
+    const domainNote = domainContext
+      ? `\nDomain context: ${domainContext}`
+      : '';
+    const prompt = `You are a Chief Operating Officer advisor.
+Based on these ${scanType || 'operational'} scan findings, provide a situational assessment.${domainNote}
+FINDINGS:
+${findingSummary}
+Respond in this exact JSON format with no preamble or markdown:
+{
+  "situationSummary": "2-3 sentence overall situation assessment",
+  "urgencyLevel": "HIGH|MEDIUM|LOW",
+  "priorities": [
+    {
+      "rank": 1,
+      "title": "priority title",
+      "severity": "HIGH|MEDIUM|LOW",
+      "insight": "one sentence insight",
+      "action": "one sentence recommended action",
+      "timeframe": "immediate|this week|this month"
+    }
+  ],
+  "chiefQuestion": "The single most important question the CEO should be asking right now"
+}
+Provide exactly 3 priorities. Return only valid JSON.`;
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1000,
+      system: 'You are a strategic business advisor. Always respond with valid JSON only.',
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const raw = response.content[0].text.trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const assessment = JSON.parse(clean);
+    res.json({ success: true, assessment });
+  } catch (err) {
+    console.error('/api/situation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
