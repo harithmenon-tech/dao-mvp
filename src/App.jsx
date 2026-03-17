@@ -5,6 +5,7 @@ import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal 
 import BriefView from './BriefView.jsx';
 import domainRegistry from './domain/domainRegistry.js';
 import { getScanOverlay } from './domain/domainContextInjector.js';
+import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDatasetRegistry } from './core/data/datasetRegistry.js';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -1001,6 +1002,12 @@ export default function App() {
       try {
         const parsed = await parseFile(file);
         newDatasets.push(parsed);
+        const record = createDatasetRecord(file, parsed);
+        const suggestedDomain = classifySuggestDomain(record);
+        record.domain = suggestedDomain;
+        const existingRegistry = loadDatasetRegistry();
+        existingRegistry.push(record);
+        saveDatasetRegistry(existingRegistry);
       } catch (e) {
         console.error("Parse error:", e);
       }
