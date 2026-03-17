@@ -833,11 +833,11 @@ export default function App() {
     if (c) setChatMsgs(c);
     setLoading(false);
     preloadVarianceForDueDecisions();
-    checkDecisionHealth();
   }, []);
 
   // Persist
-  useEffect(() => { if (journal.length) store.set("dao-journal", journal); }, [journal]);
+  useEffect(() => { if (journal.length) store.set("dao-journal", journal);
+    if (journal.length > 0) { checkDecisionHealth(); } }, [journal]);
   useEffect(() => { if (chatMsgs.length) store.set("dao-chat", chatMsgs); }, [chatMsgs]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
