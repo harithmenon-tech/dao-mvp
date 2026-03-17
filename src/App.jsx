@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dao-storage.js';
+import { detectPatterns, savePatterns, loadPatterns, findMatchingPatterns } from './patternMemory';
 import BriefView from './BriefView.jsx';
 import domainRegistry from './domain/domainRegistry.js';
 import { getScanOverlay } from './domain/domainContextInjector.js';
@@ -746,6 +747,64 @@ function FindingCard({ finding, resolved, onToggle }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// PATTERN MEMORY PANEL
+// ═══════════════════════════════════════════════════════════════
+function PatternMemoryPanel({ patterns }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ margin: "16px 0", border: "1px solid #2a2a4a", borderRadius: 12, overflow: "hidden" }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "12px 16px", background: "#12122a", cursor: "pointer" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>🧠</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>Pattern Memory</span>
+          <span style={{ fontSize: 11, background: "#2a2a5a", color: "#8888ff",
+            border: "1px solid #4a4a8a", borderRadius: 10, padding: "2px 8px" }}>
+            {patterns.length}
+          </span>
+        </div>
+        <span style={{ color: "#8888bb", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ background: "#0d0d1f", padding: "12px 16px" }}>
+          {patterns.length === 0 ? (
+            <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+              No patterns detected yet.
+            </div>
+          ) : (
+            patterns.map(p => (
+              <div key={p.id} style={{ padding: "10px 0", borderBottom: "1px solid #1a1a3a" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>{p.label}</span>
+                  <span style={{ fontSize: 11, color: "#8888ff", flexShrink: 0 }}>×{p.count}</span>
+                </div>
+                <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#666688", marginBottom: p.tags.length > 0 ? 6 : 0 }}>
+                  <span>Avg confidence: {p.avgConfidence}</span>
+                  <span>Last seen: {new Date(p.lastSeen).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                </div>
+                {p.tags.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {p.tags.map(t => (
+                      <span key={t} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10,
+                        background: "#1e293b", color: "#94A3B8", border: "1px solid #1E3A5F" }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
@@ -798,6 +857,8 @@ export default function App() {
   const [humanOverrode, setHumanOverrode] = useState(false);
   const [scanValidation, setScanValidation] = useState(null);
   const [showScanValidation, setShowScanValidation] = useState(false);
+  const [patterns, setPatterns] = useState(loadPatterns());
+  const [matchingPatterns, setMatchingPatterns] = useState([]);
   const [scanSchedule, setScanSchedule] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('dao-scan-schedule')) ||
@@ -1412,6 +1473,9 @@ export default function App() {
     const updated = [entry, ...journal];
     setJournal(updated);
     saveJournal(updated);
+    const refreshedPatterns = detectPatterns(updated);
+    setPatterns(refreshedPatterns);
+    savePatterns(refreshedPatterns);
     logAudit(profile.name, entry.id, 'CREATE', 1);
     setShowJournalForm(false);
     setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
@@ -1468,6 +1532,9 @@ export default function App() {
     const updated = [entry, ...journal];
     setJournal(updated);
     saveJournal(updated);
+    const refreshedPatterns = detectPatterns(updated);
+    setPatterns(refreshedPatterns);
+    savePatterns(refreshedPatterns);
     logAudit(profile?.name, entry.id, "CONFIRM", entry.version);
     setRationaleLoading(false);
     setChallengeOpen(false);
@@ -1499,6 +1566,9 @@ export default function App() {
     });
     setJournal(updated);
     saveJournal(updated);
+    const refreshedPatterns = detectPatterns(updated);
+    setPatterns(refreshedPatterns);
+    savePatterns(refreshedPatterns);
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
     setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
@@ -2199,6 +2269,10 @@ export default function App() {
                   )}
                 </div>
               )}
+
+              {/* ── Pattern Memory panel ── */}
+              <PatternMemoryPanel patterns={patterns} />
+
             </div>
           )}
 
@@ -2443,7 +2517,7 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <label style={labelStyle}>
                       <span style={labelText}>Severity Tier</span>
-                      <select value={jf.tier} onChange={e => setJf({...jf, tier: e.target.value})} style={inputStyle}>
+                      <select value={jf.tier} onChange={e => { const v = e.target.value; setJf({...jf, tier: v}); setMatchingPatterns(findMatchingPatterns({...jf, tier: v}, patterns)); }} style={inputStyle}>
                         <option value="1">Tier 1 — Low</option>
                         <option value="2">Tier 2 — Medium</option>
                         <option value="3">Tier 3 — High</option>
@@ -2451,7 +2525,7 @@ export default function App() {
                     </label>
                     <label style={labelStyle}>
                       <span style={labelText}>Decision Type</span>
-                      <select value={jf.type} onChange={e => setJf({...jf, type: e.target.value})} style={inputStyle}>
+                      <select value={jf.type} onChange={e => { const v = e.target.value; setJf({...jf, type: v}); setMatchingPatterns(findMatchingPatterns({...jf, type: v}, patterns)); }} style={inputStyle}>
                         <option value="technical">Technical</option>
                         <option value="human">Human</option>
                         <option value="political">Political</option>
@@ -2522,11 +2596,21 @@ export default function App() {
                     <input
                       type="text"
                       value={jf.tagsRaw}
-                      onChange={e => setJf({...jf, tagsRaw: e.target.value})}
+                      onChange={e => { setJf({...jf, tagsRaw: e.target.value}); setMatchingPatterns(findMatchingPatterns(jf, patterns)); }}
                       placeholder="e.g. budget, Q2, risk"
                       style={inputStyle}
                     />
                   </label>
+                  {matchingPatterns.length > 0 && (
+                    <div style={{ background: "#fffbe6", border: "1px solid #ffe58f",
+                      borderRadius: 6, padding: "8px 12px", marginTop: 8 }}>
+                      <strong>⚠ Pattern detected:</strong>{" "}
+                      {matchingPatterns.map(p => p.label).join(", ")}
+                      <span style={{ marginLeft: 8, fontSize: 12, color: "#888" }}>
+                        — you've made similar decisions before
+                      </span>
+                    </div>
+                  )}
                   <label style={labelStyle}>
                     <span style={labelText}>Status</span>
                     <select value={jf.lifecycleStatus} onChange={e => setJf({...jf, lifecycleStatus: e.target.value})} style={inputStyle}>
