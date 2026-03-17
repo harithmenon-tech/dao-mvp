@@ -796,6 +796,8 @@ export default function App() {
   const [decisionHealth, setDecisionHealth] = useState(null);
   const [healthExpanded, setHealthExpanded] = useState(false);
   const [humanOverrode, setHumanOverrode] = useState(false);
+  const [scanValidation, setScanValidation] = useState(null);
+  const [showScanValidation, setShowScanValidation] = useState(false);
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -1038,10 +1040,19 @@ export default function App() {
 
   // ═══════════ ENTERPRISE SCAN ═══════════
   const runScan = async () => {
+    const registry = loadDatasetRegistry();
+    if (registry.length > 0) {
+      const report = buildValidationReport(
+        scanMode === 'revenue' ? 'revenue' : 'operational',
+        registry
+      );
+      setScanValidation(report);
+      setShowScanValidation(true);
+      return;
+    }
     if (datasets.length === 0) return;
     setScanning(true);
     setView("scan");
-    const registry = loadDatasetRegistry();
     const routedDatasets = registry.length > 0
       ? getIncludedDatasets(scanMode === 'revenue' ? 'revenue' : 'operational', registry)
           .map(record => datasets.find(d => d.name === record.name))
@@ -1058,6 +1069,11 @@ export default function App() {
           { role: "user", content: `Here is data from ${profile.org} (Industry: ${profile.industry}). Run a full Revenue Intelligence Scan.\n\n${dataSummary}` }
         ]);
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
+        saveScanRecord(
+          scanMode === 'revenue' ? 'revenue' : 'operational',
+          scanDatasets,
+          findings?.length || 0
+        );
       } else {
         setScanResults(null);
         const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
@@ -1068,6 +1084,11 @@ export default function App() {
           { role: "user", content: `Here is all the operational data from ${profile.org}. Run a full Enterprise Scan.\n\n${dataSummary}` }
         ]);
         setScanResults({ text: result, timestamp: new Date().toISOString() });
+        saveScanRecord(
+          scanMode === 'revenue' ? 'revenue' : 'operational',
+          scanDatasets,
+          findings?.length || 0
+        );
       }
     } catch (e) {
       const isRateLimit = e.message.toLowerCase().includes("rate");
@@ -1079,6 +1100,26 @@ export default function App() {
     }
     setScanning(false);
   };
+
+  async function proceedWithScan() {
+    setShowScanValidation(false);
+    setScanValidation(null);
+    await runScan();
+  }
+
+  function saveScanRecord(type, datasetsUsed, findingCount) {
+    const key = 'dao-scan-history';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const record = {
+      id: Date.now().toString(),
+      type,
+      date: new Date().toISOString(),
+      datasetsUsed: datasetsUsed.map(d => d.name || d),
+      findingCount,
+    };
+    existing.unshift(record);
+    localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+  }
 
   // ═══════════ CHAT ═══════════
   const handleMic = () => {
@@ -2015,6 +2056,54 @@ export default function App() {
                       </div>
                     );
                   })()}
+                  {showScanValidation && scanValidation && (
+                    <div style={{
+                      background: '#1a1a2e', border: '1px solid #3a3a5c',
+                      borderRadius: 8, padding: 20, marginBottom: 16
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12,
+                        color: '#e2e8f0' }}>
+                        Pre-Scan Validation — {scanMode === 'revenue' ? 'Revenue Intelligence' : 'Operational Scan'}
+                      </div>
+                      {scanValidation.included?.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <span style={{ color: '#68d391', fontWeight: 600 }}>✅ Included:</span>
+                          <span style={{ color: '#a0aec0', marginLeft: 8 }}>
+                            {scanValidation.included.map(d => d.name).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                      {scanValidation.excluded?.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <span style={{ color: '#f6ad55', fontWeight: 600 }}>⚠️ Excluded:</span>
+                          <span style={{ color: '#a0aec0', marginLeft: 8 }}>
+                            {scanValidation.excluded.map(d => d.name).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                      {scanValidation.missing?.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <span style={{ color: '#fc8181', fontWeight: 600 }}>❌ Missing:</span>
+                          <span style={{ color: '#a0aec0', marginLeft: 8 }}>
+                            {scanValidation.missing.join(', ')}
+                          </span>
+                        </div>
+                      )}
+                      <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+                        <button onClick={proceedWithScan} style={{
+                          background: '#553c9a', color: '#fff', border: 'none',
+                          borderRadius: 6, padding: '8px 18px', cursor: 'pointer',
+                          fontWeight: 600
+                        }}>Proceed with Scan</button>
+                        <button onClick={() => { setShowScanValidation(false); setScanValidation(null); }}
+                          style={{
+                            background: 'transparent', color: '#a0aec0',
+                            border: '1px solid #3a3a5c', borderRadius: 6,
+                            padding: '8px 18px', cursor: 'pointer'
+                          }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                   {scanning ? (
                     <div style={{ textAlign: "center", padding: "60px 20px" }}>
                       <div style={{ fontSize: 48, marginBottom: 16 }}>{scanMode === "revenue" ? "💰" : "🔍"}</div>
