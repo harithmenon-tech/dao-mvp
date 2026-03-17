@@ -869,6 +869,9 @@ export default function App() {
   const [riskRadar, setRiskRadar] = useState([]);
   const [riskRadarLoading, setRiskRadarLoading] = useState(false);
   const [showRiskRadar, setShowRiskRadar] = useState(false);
+  const [boardPack, setBoardPack] = useState(null);
+  const [boardPackLoading, setBoardPackLoading] = useState(false);
+  const [showBoardPack, setShowBoardPack] = useState(false);
   const [scanSchedule, setScanSchedule] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('dao-scan-schedule')) ||
@@ -1143,6 +1146,55 @@ export default function App() {
       console.error('Risk Radar error', e);
     }
     setRiskRadarLoading(false);
+  }
+
+  async function buildBoardPack() {
+    const decisions = loadJournal();
+    const closed = decisions.filter(d => d.lifecycleStatus === "Closed");
+    const active = decisions.filter(d => d.lifecycleStatus === "Active" || d.lifecycleStatus === "Monitoring");
+    const risks = riskRadar.slice(0, 5);
+    const topPatterns = patterns.slice(0, 3);
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalDecisions: decisions.length,
+        activeDecisions: active.length,
+        closedDecisions: closed.length,
+        openRisks: risks.length,
+        patternsDetected: topPatterns.length
+      },
+      activeDecisions: active.map(d => ({
+        id: d.id,
+        statement: d.statement,
+        tier: d.tier,
+        lifecycleStatus: d.lifecycleStatus,
+        confidenceScore: d.confidenceScore ?? 3,
+        tags: d.tags || [],
+        review_date: d.review_date
+      })),
+      risks,
+      patterns: topPatterns
+    };
+  }
+
+  async function handleGenerateBoardPack() {
+    setBoardPackLoading(true);
+    const pack = await buildBoardPack();
+    setBoardPack(pack);
+    setShowBoardPack(true);
+    setBoardPackLoading(false);
+  }
+
+  function exportBoardPackJSON() {
+    if (!boardPack) return;
+    const blob = new Blob([JSON.stringify(boardPack, null, 2)],
+      { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `board-pack-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function evaluateAllEscalationTriggers() {
@@ -2504,6 +2556,117 @@ export default function App() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Board Pack panel ── */}
+              <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>📋 Board Pack</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={handleGenerateBoardPack}
+                      disabled={boardPackLoading}
+                      style={{ background: boardPackLoading ? BG_SURFACE : `${ACCENT}20`, color: boardPackLoading ? TEXT_DIM : ACCENT, border: `1px solid ${boardPackLoading ? BORDER : ACCENT}40`, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: boardPackLoading ? "not-allowed" : "pointer" }}
+                    >
+                      {boardPackLoading ? "Generating..." : "Generate Board Pack"}
+                    </button>
+                    {showBoardPack && (
+                      <button onClick={() => setShowBoardPack(false)} style={{ background: "transparent", color: TEXT_DIM, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>Close</button>
+                    )}
+                  </div>
+                </div>
+                {showBoardPack && boardPack && (
+                  <div>
+                    {/* Summary tiles */}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                      {[
+                        { label: "Total Decisions", value: boardPack.summary.totalDecisions },
+                        { label: "Active", value: boardPack.summary.activeDecisions, color: GREEN },
+                        { label: "Closed", value: boardPack.summary.closedDecisions, color: TEXT_DIM },
+                        { label: "Open Risks", value: boardPack.summary.openRisks, color: RED },
+                        { label: "Patterns", value: boardPack.summary.patternsDetected, color: AMBER }
+                      ].map((tile, i) => (
+                        <div key={i} style={{ flex: "1 1 80px", background: BG_SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: tile.color || TEXT }}>{tile.value}</div>
+                          <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 2 }}>{tile.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Active Decisions */}
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 8, letterSpacing: 0.5 }}>Active Decisions</div>
+                      {boardPack.activeDecisions.length === 0 ? (
+                        <p style={{ fontSize: 12, color: TEXT_DIM }}>No active decisions.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {boardPack.activeDecisions.map((d, i) => (
+                            <div key={i} style={{ background: BG_SURFACE, borderRadius: 8, padding: "10px 12px", border: `1px solid ${BORDER}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, background: `${ACCENT}20`, color: ACCENT, borderRadius: 6, padding: "2px 7px" }}>Tier {d.tier}</span>
+                                <span style={{ fontSize: 11, fontWeight: 600, background: d.lifecycleStatus === "Active" ? `${GREEN}20` : `${AMBER}20`, color: d.lifecycleStatus === "Active" ? GREEN : AMBER, borderRadius: 6, padding: "2px 7px" }}>{d.lifecycleStatus}</span>
+                                <span style={{ fontSize: 11, color: TEXT_DIM }}>Confidence: {d.confidenceScore}/5</span>
+                              </div>
+                              <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 4 }}>{d.statement}</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: d.review_date ? 4 : 0 }}>
+                                {(d.tags || []).map((tag, ti) => (
+                                  <span key={ti} style={{ fontSize: 10, background: `${ACCENT}15`, color: ACCENT, borderRadius: 10, padding: "1px 7px" }}>{tag}</span>
+                                ))}
+                              </div>
+                              {d.review_date && (
+                                <div style={{ fontSize: 11, color: TEXT_DIM }}>Review: {d.review_date}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top Risk Signals */}
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 8, letterSpacing: 0.5 }}>Top Risk Signals</div>
+                      {boardPack.risks.length === 0 ? (
+                        <p style={{ fontSize: 12, color: TEXT_DIM }}>No risk signals. Run the Risk Radar first.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {boardPack.risks.map((risk, i) => (
+                            <div key={i} style={{ background: BG_SURFACE, borderRadius: 8, padding: "10px 12px", border: `1px solid ${BORDER}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "2px 8px", background: risk.severity === "High" ? `${RED}25` : risk.severity === "Medium" ? `${AMBER}25` : "#64748B25", color: risk.severity === "High" ? RED : risk.severity === "Medium" ? AMBER : "#94A3B8" }}>{risk.severity}</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM }}>{risk.riskType}</span>
+                              </div>
+                              <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 2 }}>{risk.statement}</div>
+                              <div style={{ fontSize: 12, color: TEXT_DIM }}>{risk.reason}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Decision Patterns */}
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 8, letterSpacing: 0.5 }}>Decision Patterns</div>
+                      {boardPack.patterns.length === 0 ? (
+                        <p style={{ fontSize: 12, color: TEXT_DIM }}>No patterns detected yet.</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {boardPack.patterns.map((p, i) => (
+                            <div key={i} style={{ background: BG_SURFACE, borderRadius: 8, padding: "8px 12px", border: `1px solid ${BORDER}`, display: "flex", alignItems: "center", gap: 12 }}>
+                              <span style={{ fontSize: 13, color: TEXT, fontWeight: 500, flex: 1 }}>{p.label}</span>
+                              <span style={{ fontSize: 11, color: TEXT_DIM }}>Count: {p.count}</span>
+                              <span style={{ fontSize: 11, color: TEXT_DIM }}>Avg Confidence: {p.avgConfidence}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Export */}
+                    <button onClick={exportBoardPackJSON} style={{ background: `${GREEN}20`, color: GREEN, border: `1px solid ${GREEN}40`, borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Export as JSON
+                    </button>
                   </div>
                 )}
               </div>
