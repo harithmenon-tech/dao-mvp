@@ -1217,6 +1217,7 @@ export default function App() {
 
   // ═══════════ ENTERPRISE SCAN ═══════════
   const runScan = async (skipValidation = false) => {
+    let findings = [];
     const registry = loadDatasetRegistry();
     if (!skipValidation && registry.length > 0) {
       const report = buildValidationReport(
@@ -1673,6 +1674,7 @@ export default function App() {
     });
     setJournal(updated);
     saveJournal(updated);
+    setJournal(loadJournal());
     const refreshedPatterns = detectPatterns(updated);
     setPatterns(refreshedPatterns);
     savePatterns(refreshedPatterns);
@@ -2083,7 +2085,13 @@ export default function App() {
                       padding: "12px 16px", fontSize: 14, lineHeight: 1.6,
                       whiteSpace: "pre-wrap", wordBreak: "break-word"
                     }}>
-                      {msg.content || (streaming && i === chatMsgs.length - 1 ? <span style={{ color: TEXT_DIM }}>Thinking...</span> : "")}
+                      {msg.role === 'assistant'
+                        ? <span dangerouslySetInnerHTML={{ __html:
+                            (msg.content || '')
+                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\n/g, '<br/>')
+                          }} />
+                        : (msg.content || (streaming && i === chatMsgs.length - 1 ? <span style={{ color: TEXT_DIM }}>Thinking...</span> : ""))}
                     </div>
                     {/* Auto-Log Decision Button for AI messages with decisions */}
                     {msg.role === "assistant" && msg.content && detectDecisionInMessage(msg.content) && !streaming && (
