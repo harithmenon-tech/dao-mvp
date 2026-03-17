@@ -8,6 +8,7 @@ import domainRegistry from './domain/domainRegistry.js';
 import { getScanOverlay } from './domain/domainContextInjector.js';
 import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDatasetRegistry } from './core/data/datasetRegistry.js';
 import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
+import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -887,10 +888,14 @@ export default function App() {
     lastScanType: null
   });
 
+  const [activeDomain, setActiveDomain] = useState(
+    localStorage.getItem('dao-active-domain') || DEFAULT_DOMAIN
+  );
+
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
-  const activeDomain = domainRegistry[activeDomainId] || domainRegistry['generic'];
-  console.log('[DAO] Active domain:', activeDomain.id, '(' + activeDomain.label + ')');
+  const domainConfig = getDomain(activeDomain);
+  console.log('[DAO] Active domain:', domainConfig.id, '(' + domainConfig.label + ')');
 
   // Health check — determines if live API is available
   useEffect(() => {
@@ -941,6 +946,9 @@ export default function App() {
   useEffect(() => { if (revenueScanResults) store.set("dao-revenue-scan", revenueScanResults); }, [revenueScanResults]);
   useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
   useEffect(() => { store.set("dao-change-projects", changeProjects); }, [changeProjects]);
+  useEffect(() => {
+    localStorage.setItem('dao-active-domain', activeDomain);
+  }, [activeDomain]);
   useEffect(() => {
     if (view === "board") {
       setChatInput("Draft a board narrative for the current situation.");
@@ -1138,7 +1146,7 @@ export default function App() {
       const res = await fetch('/api/risk-radar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decisions, domainContext: profile?.sector || '' })
+        body: JSON.stringify({ decisions, domainContext: JSON.stringify(domainConfig) })
       });
       const data = await res.json();
       setRiskRadar(data.risks || []);
@@ -1307,7 +1315,7 @@ export default function App() {
         body: JSON.stringify({
           findings,
           scanType,
-          domainContext: window.__daoConfig?.domainLabel || ''
+          domainContext: JSON.stringify(domainConfig)
         })
       });
       const data = await res.json();
@@ -1328,7 +1336,7 @@ export default function App() {
         body: JSON.stringify({
           findings,
           scanType,
-          domainContext: window.__daoConfig?.domainLabel || '',
+          domainContext: JSON.stringify(domainConfig),
           uploadedSummary: localStorage.getItem('dao-uploaded-summary') || ''
         })
       });
@@ -1413,7 +1421,8 @@ export default function App() {
         `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
         `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
         `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
-        `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`
+        `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`,
+        `DOMAIN: ${domainConfig.label} | PERSONA: Act as ${domainConfig.chiefPersona}`
       ].join('\n\n');
       const sysPrompt = buildSystemPrompt() + '\n\n' + chiefContext;
       // Include all data context if available
@@ -1918,6 +1927,10 @@ export default function App() {
               )}
             </div>
           </div>
+          <span style={{ background: '#e6f4ff', color: '#1677ff', borderRadius: 12,
+            padding: '2px 10px', fontSize: 12, marginLeft: 10, fontWeight: 500 }}>
+            {domainConfig.label}
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* API Status Badge */}
@@ -1972,6 +1985,23 @@ export default function App() {
             </div>
             <div style={{ fontSize: 12, color: apiStatus === "live" ? GREEN : AMBER, marginBottom: 8 }}>
               AI: {apiStatus === "live" ? "Live (Claude)" : "Demo Mode"}
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: TEXT_DIM, marginBottom: 6, fontWeight: 500 }}>Active Domain</div>
+              <select
+                value={activeDomain}
+                onChange={e => setActiveDomain(e.target.value)}
+                style={{ width: "100%", padding: "6px 10px", background: BG_SURFACE, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, outline: "none", fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}
+              >
+                {Object.values(DOMAINS).map(d => (
+                  <option key={d.id} value={d.id}>{d.label}</option>
+                ))}
+              </select>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                {getDomain(activeDomain).focusAreas.map(area => (
+                  <span key={area} style={{ background: `${ACCENT}15`, color: ACCENT, borderRadius: 10, padding: "2px 8px", fontSize: 10, fontWeight: 500 }}>{area}</span>
+                ))}
+              </div>
             </div>
             <button onClick={resetAll} style={{ fontSize: 12, color: RED, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Reset Everything</button>
           </div>
@@ -2127,7 +2157,8 @@ export default function App() {
                       `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
                       `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
                       `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
-                      `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`
+                      `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`,
+                      `DOMAIN: ${domainConfig.label} | PERSONA: Act as ${domainConfig.chiefPersona}`
                     ].join('\n\n');
                     const sysP = buildSystemPrompt() + '\n\n' + chiefCtx;
                     const history = newMsgs.slice(-6).map(m => ({ role: m.role, content: m.content }));
