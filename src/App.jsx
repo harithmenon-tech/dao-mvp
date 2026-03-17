@@ -845,6 +845,12 @@ export default function App() {
   useEffect(() => { if (revenueScanResults) store.set("dao-revenue-scan", revenueScanResults); }, [revenueScanResults]);
   useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
   useEffect(() => { store.set("dao-change-projects", changeProjects); }, [changeProjects]);
+  useEffect(() => {
+    if (view === "board") {
+      setChatInput("Draft a board narrative for the current situation.");
+      setView("chat");
+    }
+  }, [view]);
 
   const addChangeProject = () => {
     if (!cf.name) return;
