@@ -365,6 +365,57 @@ Provide exactly 3 keyFindings and 3 recommendedActions. Return only valid JSON.`
   }
 });
 
+app.post('/api/risk-radar', async (req, res) => {
+  try {
+    const { decisions, domainContext } = req.body;
+    const decisionList = (decisions || []).map(d =>
+      `- ID: ${d.id || ''} | Statement: ${(d.statement || '').slice(0, 80)} | Tier: ${d.tier || ''} | Status: ${d.lifecycleStatus || ''} | Confidence: ${d.confidenceScore ?? ''} | Review Date: ${d.review_date || ''} | Tags: ${(d.tags || []).join(', ')}`
+    ).join('\n');
+    const domainNote = domainContext ? `\nDomain context: ${domainContext}` : '';
+    const prompt = `You are a decision risk analyst.${domainNote}
+
+Review the following decisions and identify risk signals:
+${decisionList}
+
+Identify risks for:
+1. Overdue Reviews: review_date is in the past and lifecycleStatus is not "Closed"
+2. Low Confidence on High-Tier: tier is "1" or "2" and confidenceScore <= 2
+3. Missing Evidence: tier is "1" or "2" and the decision has no evidence field
+4. Stale Status: lifecycleStatus is "Draft" or "Monitoring" for decisions (assume stale if status is Draft or Monitoring)
+
+Return a JSON array of risk objects with this exact schema:
+[
+  {
+    "decisionId": "string",
+    "statement": "string (truncated to 60 chars)",
+    "riskType": "Overdue Review" | "Low Confidence" | "Missing Evidence" | "Stale Status",
+    "severity": "High" | "Medium" | "Low",
+    "reason": "string (one sentence)"
+  }
+]
+
+Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      system: 'You are a decision risk analyst. Respond only with a valid JSON array, no markdown, no preamble.',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = message.content[0].text.trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const risks = JSON.parse(clean);
+    return res.status(200).json({ risks });
+  } catch (err) {
+    console.error('[/api/risk-radar error]', err.message);
+    return res.status(200).json({ risks: [], error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {

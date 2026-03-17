@@ -859,6 +859,9 @@ export default function App() {
   const [showScanValidation, setShowScanValidation] = useState(false);
   const [patterns, setPatterns] = useState(loadPatterns());
   const [matchingPatterns, setMatchingPatterns] = useState([]);
+  const [riskRadar, setRiskRadar] = useState([]);
+  const [riskRadarLoading, setRiskRadarLoading] = useState(false);
+  const [showRiskRadar, setShowRiskRadar] = useState(false);
   const [scanSchedule, setScanSchedule] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('dao-scan-schedule')) ||
@@ -1116,6 +1119,34 @@ export default function App() {
     setDatasets(prev => [...prev, ...parsedFiles]);
   };
 
+  // ═══════════ RISK RADAR ═══════════
+  async function runRiskRadar() {
+    setRiskRadarLoading(true);
+    try {
+      const decisions = loadJournal();
+      const res = await fetch('/api/risk-radar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decisions, domainContext: profile?.sector || '' })
+      });
+      const data = await res.json();
+      setRiskRadar(data.risks || []);
+    } catch(e) {
+      console.error('Risk Radar error', e);
+    }
+    setRiskRadarLoading(false);
+  }
+
+  async function evaluateAllEscalationTriggers() {
+    const decisions = loadJournal();
+    const escalatable = decisions.filter(d =>
+      d.tier === "1" && d.lifecycleStatus !== "Closed"
+    );
+    if (escalatable.length === 0) return;
+    // Run risk radar automatically for Tier 1 active decisions
+    await runRiskRadar();
+  }
+
   // ═══════════ ENTERPRISE SCAN ═══════════
   const runScan = async () => {
     const registry = loadDatasetRegistry();
@@ -1183,6 +1214,7 @@ export default function App() {
       scanMode === "revenue" ? setRevenueScanResults(errObj) : setScanResults(errObj);
     }
     setScanning(false);
+    await evaluateAllEscalationTriggers();
   };
 
   async function proceedWithScan() {
@@ -2272,6 +2304,60 @@ export default function App() {
 
               {/* ── Pattern Memory panel ── */}
               <PatternMemoryPanel patterns={patterns} />
+
+              {/* ── Risk Radar panel ── */}
+              <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: TEXT, cursor: "pointer" }} onClick={() => setShowRiskRadar(v => !v)}>
+                      🎯 Decision Risk Radar
+                    </span>
+                    {riskRadar.length > 0 && (
+                      <span style={{ background: `${RED}30`, color: RED, fontSize: 11, fontWeight: 700, borderRadius: 10, padding: "2px 8px" }}>
+                        {riskRadar.length}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={runRiskRadar}
+                      disabled={riskRadarLoading}
+                      style={{ background: riskRadarLoading ? BG_SURFACE : `${ACCENT}20`, color: riskRadarLoading ? TEXT_DIM : ACCENT, border: `1px solid ${riskRadarLoading ? BORDER : ACCENT}40`, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: riskRadarLoading ? "not-allowed" : "pointer" }}
+                    >
+                      {riskRadarLoading ? "Scanning..." : "Run Radar"}
+                    </button>
+                    <span style={{ fontSize: 12, color: TEXT_DIM, cursor: "pointer" }} onClick={() => setShowRiskRadar(v => !v)}>
+                      {showRiskRadar ? "▲" : "▼"}
+                    </span>
+                  </div>
+                </div>
+                {showRiskRadar && (
+                  <div>
+                    {riskRadar.length === 0 && !riskRadarLoading ? (
+                      <p style={{ fontSize: 13, color: TEXT_DIM, margin: "8px 0 0" }}>Run the radar to surface decision risks.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                        {riskRadar.map((risk, i) => (
+                          <div key={i} style={{ background: BG_SURFACE, borderRadius: 8, padding: "10px 12px", border: `1px solid ${BORDER}` }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "2px 8px",
+                                background: risk.severity === "High" ? `${RED}25` : risk.severity === "Medium" ? `${AMBER}25` : "#64748B25",
+                                color: risk.severity === "High" ? RED : risk.severity === "Medium" ? AMBER : "#94A3B8"
+                              }}>
+                                {risk.severity}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM }}>{risk.riskType}</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 2 }}>{(risk.statement || "").slice(0, 60)}{(risk.statement || "").length > 60 ? "…" : ""}</div>
+                            <div style={{ fontSize: 12, color: TEXT_DIM }}>{risk.reason}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
             </div>
           )}
