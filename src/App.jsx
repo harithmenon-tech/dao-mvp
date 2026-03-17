@@ -2369,17 +2369,6 @@ export default function App() {
                       {copilotVariance && copilotVariance.loading && (
                         <p style={{color:'#888',fontSize:'0.85rem',marginTop:'8px'}}>Copilot is analysing...</p>
                       )}
-                      {copilotVariance && copilotVariance.variance && !copilotVariance.loading && (
-                        <div style={{background:'#E8F4FD',borderRadius:'8px',padding:'12px',marginTop:'8px'}}>
-                          <p style={{fontWeight:'bold',margin:'0 0 4px 0'}}>
-                            Copilot suggests: {copilotVariance.variance} ({copilotVariance.confidence} confidence)
-                          </p>
-                          <p style={{margin:'0 0 4px 0',fontSize:'0.9rem'}}>{copilotVariance.reasoning}</p>
-                          <p style={{margin:0,fontSize:'0.8rem',color:'#888'}}>
-                            Accept by saving as-is, or change the selection above to override.
-                          </p>
-                        </div>
-                      )}
                     </div>
                     <label style={labelStyle}>
                       <span style={labelText}>Actual Outcome *</span>
