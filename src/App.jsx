@@ -1006,6 +1006,8 @@ export default function App() {
       }
     }
     setDatasets(newDatasets);
+    const summary = summarizeData(newDatasets, false);
+    localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
     checkDecisionHealth();
     return newDatasets;
   };
