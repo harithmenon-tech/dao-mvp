@@ -798,6 +798,12 @@ export default function App() {
   const [humanOverrode, setHumanOverrode] = useState(false);
   const [scanValidation, setScanValidation] = useState(null);
   const [showScanValidation, setShowScanValidation] = useState(false);
+  const [scanSchedule, setScanSchedule] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dao-scan-schedule')) ||
+        { operational: 'manual', revenue: 'manual' };
+    } catch { return { operational: 'manual', revenue: 'manual' }; }
+  });
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -1119,6 +1125,12 @@ export default function App() {
     };
     existing.unshift(record);
     localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+  }
+
+  function updateScanSchedule(type, frequency) {
+    const updated = { ...scanSchedule, [type]: frequency };
+    setScanSchedule(updated);
+    localStorage.setItem('dao-scan-schedule', JSON.stringify(updated));
   }
 
   // ═══════════ CHAT ═══════════
@@ -2607,6 +2619,43 @@ export default function App() {
                   </button>
                 </div>
               )}
+
+              <div style={{
+                background: '#1a1a2e', border: '1px solid #3a3a5c',
+                borderRadius: 8, padding: 20, marginTop: 24
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16,
+                  color: '#e2e8f0' }}>Scan Schedule</div>
+                {['operational', 'revenue'].map(type => (
+                  <div key={type} style={{ marginBottom: 16 }}>
+                    <div style={{ color: '#a0aec0', fontSize: 13, marginBottom: 8,
+                      textTransform: 'capitalize' }}>
+                      {type === 'revenue' ? 'Revenue Intelligence' : 'Operational Scan'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {['manual', 'daily', 'weekly', 'monthly'].map(freq => (
+                        <button
+                          key={freq}
+                          onClick={() => updateScanSchedule(type, freq)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 6,
+                            border: scanSchedule[type] === freq
+                              ? '1px solid #805ad5' : '1px solid #3a3a5c',
+                            background: scanSchedule[type] === freq
+                              ? '#553c9a' : 'transparent',
+                            color: scanSchedule[type] === freq ? '#fff' : '#a0aec0',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: scanSchedule[type] === freq ? 600 : 400,
+                            textTransform: 'capitalize'
+                          }}
+                        >{freq}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </main>
