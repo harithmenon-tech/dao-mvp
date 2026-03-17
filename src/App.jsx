@@ -6,6 +6,7 @@ import BriefView from './BriefView.jsx';
 import domainRegistry from './domain/domainRegistry.js';
 import { getScanOverlay } from './domain/domainContextInjector.js';
 import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDatasetRegistry } from './core/data/datasetRegistry.js';
+import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -1040,7 +1041,13 @@ export default function App() {
     if (datasets.length === 0) return;
     setScanning(true);
     setView("scan");
-    const scanDatasets = datasets.slice(0, 3);
+    const registry = loadDatasetRegistry();
+    const routedDatasets = registry.length > 0
+      ? getIncludedDatasets(scanMode === 'revenue' ? 'revenue' : 'operational', registry)
+          .map(record => datasets.find(d => d.name === record.name))
+          .filter(Boolean)
+      : datasets.slice(0, 3);
+    const scanDatasets = routedDatasets.length > 0 ? routedDatasets : datasets.slice(0, 3);
     if (datasets.length > 3) console.warn("Scan capped at 3 sources. Upload fewer files for best results.");
     const dataSummary = summarizeData(scanDatasets, true);
     try {
