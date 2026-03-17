@@ -804,6 +804,8 @@ export default function App() {
         { operational: 'manual', revenue: 'manual' };
     } catch { return { operational: 'manual', revenue: 'manual' }; }
   });
+  const [situationAssessment, setSituationAssessment] = useState(null);
+  const [loadingSituation, setLoadingSituation] = useState(false);
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -1080,6 +1082,7 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
+        fetchSituationAssessment(revenueScanResults || [], 'revenue');
       } else {
         setScanResults(null);
         const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
@@ -1095,6 +1098,7 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
+        fetchSituationAssessment(scanResults || [], 'operational');
       }
     } catch (e) {
       const isRateLimit = e.message.toLowerCase().includes("rate");
@@ -1125,6 +1129,28 @@ export default function App() {
     };
     existing.unshift(record);
     localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
+  }
+
+  async function fetchSituationAssessment(findings, scanType) {
+    if (!findings || findings.length === 0) return;
+    setLoadingSituation(true);
+    try {
+      const res = await fetch('/api/situation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          findings,
+          scanType,
+          domainContext: window.__daoConfig?.domainLabel || ''
+        })
+      });
+      const data = await res.json();
+      if (data.success) setSituationAssessment(data.assessment);
+    } catch (err) {
+      console.error('Situation assessment error:', err);
+    } finally {
+      setLoadingSituation(false);
+    }
   }
 
   function updateScanSchedule(type, frequency) {
@@ -2114,6 +2140,75 @@ export default function App() {
                             padding: '8px 18px', cursor: 'pointer'
                           }}>Cancel</button>
                       </div>
+                    </div>
+                  )}
+                  {(situationAssessment || loadingSituation) && (
+                    <div style={{
+                      background: '#1a1a2e', border: '1px solid #553c9a',
+                      borderRadius: 8, padding: 20, marginBottom: 20
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12,
+                        color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>🎯</span> Situation Assessment
+                        {situationAssessment && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: '2px 8px',
+                            borderRadius: 4, marginLeft: 8,
+                            background: situationAssessment.urgencyLevel === 'HIGH'
+                              ? '#742a2a' : situationAssessment.urgencyLevel === 'MEDIUM'
+                              ? '#744210' : '#1a4731',
+                            color: situationAssessment.urgencyLevel === 'HIGH'
+                              ? '#fc8181' : situationAssessment.urgencyLevel === 'MEDIUM'
+                              ? '#f6ad55' : '#68d391'
+                          }}>{situationAssessment.urgencyLevel}</span>
+                        )}
+                      </div>
+                      {loadingSituation && (
+                        <div style={{ color: '#a0aec0', fontSize: 13 }}>
+                          Analysing situation...
+                        </div>
+                      )}
+                      {situationAssessment && (
+                        <>
+                          <div style={{ color: '#cbd5e0', fontSize: 13,
+                            marginBottom: 16, lineHeight: 1.6 }}>
+                            {situationAssessment.situationSummary}
+                          </div>
+                          <div style={{ marginBottom: 16 }}>
+                            {situationAssessment.priorities?.map(p => (
+                              <div key={p.rank} style={{
+                                background: '#0d0d1a', borderRadius: 6,
+                                padding: '10px 14px', marginBottom: 8,
+                                borderLeft: `3px solid ${p.severity === 'HIGH'
+                                  ? '#fc8181' : p.severity === 'MEDIUM'
+                                  ? '#f6ad55' : '#68d391'}`
+                              }}>
+                                <div style={{ fontWeight: 600, fontSize: 13,
+                                  color: '#e2e8f0', marginBottom: 4 }}>
+                                  {p.rank}. {p.title}
+                                  <span style={{ fontSize: 11, color: '#718096',
+                                    marginLeft: 8 }}>{p.timeframe}</span>
+                                </div>
+                                <div style={{ fontSize: 12, color: '#a0aec0',
+                                  marginBottom: 4 }}>{p.insight}</div>
+                                <div style={{ fontSize: 12, color: '#68d391' }}>
+                                  → {p.action}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{
+                            background: '#0d0d1a', borderRadius: 6,
+                            padding: '10px 14px', borderLeft: '3px solid #805ad5'
+                          }}>
+                            <div style={{ fontSize: 11, color: '#805ad5',
+                              fontWeight: 600, marginBottom: 4 }}>CHIEF QUESTION</div>
+                            <div style={{ fontSize: 13, color: '#e2e8f0', fontStyle: 'italic' }}>
+                              {situationAssessment.chiefQuestion}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                   {scanning ? (
