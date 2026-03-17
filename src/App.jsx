@@ -1216,9 +1216,9 @@ export default function App() {
   }
 
   // ═══════════ ENTERPRISE SCAN ═══════════
-  const runScan = async () => {
+  const runScan = async (skipValidation = false) => {
     const registry = loadDatasetRegistry();
-    if (registry.length > 0) {
+    if (!skipValidation && registry.length > 0) {
       const report = buildValidationReport(
         scanMode === 'revenue' ? 'revenue' : 'operational',
         registry
@@ -1288,7 +1288,7 @@ export default function App() {
   async function proceedWithScan() {
     setShowScanValidation(false);
     setScanValidation(null);
-    await runScan();
+    await runScan(true);
   }
 
   function saveScanRecord(type, datasetsUsed, findingCount) {
@@ -1669,7 +1669,7 @@ export default function App() {
       if (e.id !== reviewModal.id) return e;
       const reviews = [...(e.reviews ?? []), reviewEntry];
       const newLifecycleStatus = reviewForm.updateStatus || e.lifecycleStatus || "Active";
-      return { ...e, reviews, status: "Reviewed", lifecycleStatus: newLifecycleStatus };
+      return { ...e, reviews, status: "Reviewed", lifecycleStatus: newLifecycleStatus, review_date: new Date().toISOString().split('T')[0] };
     });
     setJournal(updated);
     saveJournal(updated);
@@ -2187,6 +2187,7 @@ export default function App() {
                 return (
                   <div style={{
                     padding: "8px 16px 0",
+                    paddingBottom: '80px',
                     display: "flex",
                     gap: 8,
                     overflowX: "auto",
