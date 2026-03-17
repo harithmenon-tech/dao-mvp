@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dal-storage.js';
+import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dao-storage.js';
 import BriefView from './BriefView.jsx';
 import domainRegistry from './domain/domainRegistry.js';
 import { getScanOverlay } from './domain/domainContextInjector.js';
