@@ -807,6 +807,11 @@ export default function App() {
   const [situationAssessment, setSituationAssessment] = useState(null);
   const [loadingSituation, setLoadingSituation] = useState(false);
   const [autoBrief, setAutoBrief] = useState(null);
+  const [commandCentreStats, setCommandCentreStats] = useState({
+    lastScanTime: null,
+    totalScans: 0,
+    lastScanType: null
+  });
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -848,6 +853,7 @@ export default function App() {
     preloadVarianceForDueDecisions();
     const savedBrief = localStorage.getItem('dao-auto-brief');
     if (savedBrief) { try { setAutoBrief(JSON.parse(savedBrief)); } catch {} }
+    loadCommandCentreStats();
   }, []);
 
   // Persist
@@ -1087,6 +1093,7 @@ export default function App() {
         );
         fetchSituationAssessment(revenueScanResults || [], 'revenue');
         fetchAndStoreAutoBrief(revenueScanResults || [], 'revenue');
+        loadCommandCentreStats();
       } else {
         setScanResults(null);
         const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
@@ -1104,6 +1111,7 @@ export default function App() {
         );
         fetchSituationAssessment(scanResults || [], 'operational');
         fetchAndStoreAutoBrief(scanResults || [], 'operational');
+        loadCommandCentreStats();
       }
     } catch (e) {
       const isRateLimit = e.message.toLowerCase().includes("rate");
@@ -1179,6 +1187,21 @@ export default function App() {
     } catch (err) {
       console.error('Auto brief generation error:', err);
     }
+  }
+
+  function loadCommandCentreStats() {
+    try {
+      const history = JSON.parse(
+        localStorage.getItem('dao-scan-history') || '[]'
+      );
+      if (history.length > 0) {
+        setCommandCentreStats({
+          lastScanTime: history[0].date,
+          totalScans: history.length,
+          lastScanType: history[0].type
+        });
+      }
+    } catch {}
   }
 
   function updateScanSchedule(type, frequency) {
@@ -1915,6 +1938,90 @@ export default function App() {
           {/* ═══════ DASHBOARD VIEW ═══════ */}
           {view === "dashboard" && (
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+
+              <div style={{
+                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                border: '1px solid #2d3748', borderRadius: 10,
+                padding: '16px 20px', marginBottom: 20,
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#718096',
+                      fontWeight: 600, letterSpacing: 1,
+                      textTransform: 'uppercase', marginBottom: 2 }}>
+                      Command Centre
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>
+                      DAO v1.4
+                    </div>
+                  </div>
+                  <div style={{ width: 1, height: 36,
+                    background: '#2d3748' }} />
+                  <div>
+                    <div style={{ fontSize: 11, color: '#718096', marginBottom: 2 }}>
+                      Last Scan
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                      {commandCentreStats.lastScanTime
+                        ? new Date(commandCentreStats.lastScanTime)
+                            .toLocaleDateString('en-GB', {
+                              day: 'numeric', month: 'short',
+                              hour: '2-digit', minute: '2-digit'
+                            })
+                        : 'No scans yet'}
+                    </div>
+                  </div>
+                  <div style={{ width: 1, height: 36, background: '#2d3748' }} />
+                  <div>
+                    <div style={{ fontSize: 11, color: '#718096', marginBottom: 2 }}>
+                      Total Scans
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                      {commandCentreStats.totalScans}
+                    </div>
+                  </div>
+                  {commandCentreStats.lastScanType && (
+                    <>
+                      <div style={{ width: 1, height: 36,
+                        background: '#2d3748' }} />
+                      <div>
+                        <div style={{ fontSize: 11, color: '#718096', marginBottom: 2 }}>
+                          Last Type
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600,
+                          color: '#805ad5', textTransform: 'capitalize' }}>
+                          {commandCentreStats.lastScanType}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setScanMode('operational')}
+                    style={{
+                      background: '#553c9a', color: '#fff', border: 'none',
+                      borderRadius: 6, padding: '8px 16px', cursor: 'pointer',
+                      fontWeight: 600, fontSize: 13
+                    }}>
+                    ⚡ Run Scan
+                  </button>
+                  {autoBrief && (
+                    <button
+                      onClick={() => setActiveTab('brief')}
+                      style={{
+                        background: 'transparent', color: '#805ad5',
+                        border: '1px solid #553c9a', borderRadius: 6,
+                        padding: '8px 16px', cursor: 'pointer',
+                        fontWeight: 600, fontSize: 13
+                      }}>
+                      📋 View Brief
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* ── Hero CTA ── */}
               <div style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 14, padding: "20px 16px", marginBottom: 14 }}>
