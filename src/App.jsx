@@ -806,6 +806,7 @@ export default function App() {
   });
   const [situationAssessment, setSituationAssessment] = useState(null);
   const [loadingSituation, setLoadingSituation] = useState(false);
+  const [autoBrief, setAutoBrief] = useState(null);
 
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
@@ -845,6 +846,8 @@ export default function App() {
     if (c) setChatMsgs(c);
     setLoading(false);
     preloadVarianceForDueDecisions();
+    const savedBrief = localStorage.getItem('dao-auto-brief');
+    if (savedBrief) { try { setAutoBrief(JSON.parse(savedBrief)); } catch {} }
   }, []);
 
   // Persist
@@ -1083,6 +1086,7 @@ export default function App() {
           findings?.length || 0
         );
         fetchSituationAssessment(revenueScanResults || [], 'revenue');
+        fetchAndStoreAutoBrief(revenueScanResults || [], 'revenue');
       } else {
         setScanResults(null);
         const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
@@ -1099,6 +1103,7 @@ export default function App() {
           findings?.length || 0
         );
         fetchSituationAssessment(scanResults || [], 'operational');
+        fetchAndStoreAutoBrief(scanResults || [], 'operational');
       }
     } catch (e) {
       const isRateLimit = e.message.toLowerCase().includes("rate");
@@ -1150,6 +1155,29 @@ export default function App() {
       console.error('Situation assessment error:', err);
     } finally {
       setLoadingSituation(false);
+    }
+  }
+
+  async function fetchAndStoreAutoBrief(findings, scanType) {
+    if (!findings || findings.length === 0) return;
+    try {
+      const res = await fetch('/api/generate-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          findings,
+          scanType,
+          domainContext: window.__daoConfig?.domainLabel || '',
+          uploadedSummary: localStorage.getItem('dao-uploaded-summary') || ''
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAutoBrief(data.brief);
+        localStorage.setItem('dao-auto-brief', JSON.stringify(data.brief));
+      }
+    } catch (err) {
+      console.error('Auto brief generation error:', err);
     }
   }
 
