@@ -522,6 +522,53 @@ function parseRevenueFindings(text) {
   return opportunities;
 }
 
+// ─── Transform layer ────────────────────────────────────────────────────────
+// /api/scan now returns structured JSON; parseFindings/parseRevenueFindings
+// expect the original labelled-text format (FINDING N / OPPORTUNITY N).
+// This function converts the JSON shape → text shape so the existing card
+// renderers continue to work without any UI changes.
+function transformScanJsonToText(raw) {
+  if (!raw) return raw;
+  try {
+    const data = JSON.parse(raw);
+
+    // Operational scan: { findings: [...] }
+    if (data.findings && Array.isArray(data.findings)) {
+      return data.findings.map((f, i) => [
+        `FINDING ${f.number || i + 1}`,
+        `PATTERN: ${f.title || f.pattern || ''}`,
+        `EVIDENCE: ${f.evidence || ''}`,
+        `RECURRENCE: ${f.recurrence || ''}`,
+        `IMPACT: ${f.impact || ''}`,
+        `ROOT CAUSE: ${f.rootCause || ''}`,
+        `FIX: ${f.fix || ''}`,
+        `SEVERITY: ${f.severity || 'Tier 2'}`,
+        `CONFIDENCE: ${f.confidence || ''}${f.confidenceReason ? ' — ' + f.confidenceReason : ''}`,
+        `ASSUMPTIONS: ${Array.isArray(f.assumptions) ? f.assumptions.join('; ') : (f.assumptions || '')}`,
+      ].join('\n')).join('\n\n');
+    }
+
+    // Revenue scan: { opportunities: [...] }
+    if (data.opportunities && Array.isArray(data.opportunities)) {
+      return data.opportunities.map((o, i) => [
+        `OPPORTUNITY ${o.number || i + 1}`,
+        `CATEGORY: ${o.category || ''}`,
+        `PATTERN: ${o.pattern || ''}`,
+        `EVIDENCE: ${o.evidence || ''}`,
+        `REVENUE POTENTIAL: ${o.revenuePotential || ''}`,
+        `TIMEFRAME: ${o.timeframe || ''}`,
+        `ACTION: ${o.action || ''}`,
+        `CONFIDENCE: ${o.confidence || ''}${o.confidenceReason ? ' — ' + o.confidenceReason : ''}`,
+        `ASSUMPTIONS: ${Array.isArray(o.assumptions) ? o.assumptions.join('; ') : (o.assumptions || '')}`,
+      ].join('\n')).join('\n\n');
+    }
+  } catch {
+    // Not JSON (plain-text fallback or error string) — pass through unchanged
+  }
+  return raw;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function parseFindings(text) {
   if (!text) return [];
   // Don't try to parse if text contains errors or doesn't have FINDING pattern
@@ -1286,7 +1333,7 @@ export default function App() {
           throw new Error(errData.error || `Scan error (${scanResp.status})`);
         }
         const scanData = await scanResp.json();
-        const result = scanData.text || '';
+        const result = transformScanJsonToText(scanData.text || '');
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',
@@ -1308,7 +1355,7 @@ export default function App() {
           throw new Error(errData.error || `Scan error (${scanResp.status})`);
         }
         const scanData = await scanResp.json();
-        const result = scanData.text || '';
+        const result = transformScanJsonToText(scanData.text || '');
         setScanResults({ text: result, timestamp: new Date().toISOString() });
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',

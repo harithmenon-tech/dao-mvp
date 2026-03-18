@@ -421,78 +421,62 @@ Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 // Accepts: { dataSummary, scanType, domain }
 // Returns: { text: string } — JSON string produced by Claude at temperature 0
 // ─────────────────────────────────────────────────────────────────────────────
-const SCAN_PROMPT_SERVER = `You are running an Enterprise Scan. Analyse ALL uploaded data systematically.
+const SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
+${domain ? `Active domain: ${domain}` : ''}
 
-For each dataset, scan for these 5 pattern categories:
+You are running an Enterprise Scan. Your output must be fully deterministic — identical input must produce identical output.
+
+STRICT OUTPUT RULES — these override everything else:
+- Return UP TO 3 findings. Never return more than 3.
+- Do NOT fabricate findings to meet a count. Only return findings supported by the data.
+- A finding must meet defined thresholds. Do not infer unsupported patterns.
+- Rank findings by severity first (Tier 1 before Tier 2 before Tier 3), then by financial impact descending. This order is mandatory.
+- Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
+- evidence: maximum 2 sentences. Include at least one specific number, date, or amount from the data. No generalisations.
+- impact: state as a single currency amount or range (e.g. RM 12,000 or RM 8,000–15,000). If not quantifiable, state "Non-financial: [one sentence]".
+- fix: one imperative sentence only. Start with a verb.
+- severity: must be exactly "Tier 1", "Tier 2", or "Tier 3". No other values accepted.
+- confidence: must be exactly "HIGH", "MODERATE", or "LOW". No other values accepted.
+- rootCause: must be exactly one of: "process", "people", "system", "governance". No other values accepted.
+
+Scan for findings in this priority order — stop at 3:
 1. CASH TRAPS: Financial items pending beyond threshold (>30 days)
 2. PROCESS LEAKS: Rework, exceptions, manual workarounds, duplicates (>3 times in 90 days)
-3. CAPACITY MISMATCHES: Overloaded or idle resources (utilisation >95% or <60%)
+3. CAPACITY MISMATCHES: Overloaded or idle resources (>95% or <60% utilisation)
 4. RECURRING FAILURES: Same incident type repeating (>3 times in 90 days)
 5. DECISION STALLS: Decisions revisited without resolution (>3 discussions, no action)
 
-CRITICAL — CROSS-DATASET CORRELATION:
-For each finding in one dataset, check ALL other datasets for correlating patterns.
-If correlation found: present as SINGLE narrative with COMBINED impact.
+If a finding spans multiple datasets, present it as one finding with combined evidence. Do not duplicate it across categories.
 
-Return ONLY a valid JSON object. No markdown fences, no preamble, no explanation.
-Use this exact schema:
-{
-  "findings": [
-    {
-      "number": 1,
-      "pattern": "what is happening",
-      "evidence": "specific data points with dates and amounts",
-      "recurrence": "frequency and period",
-      "impact": "financial + time + risk, quantified",
-      "rootCause": "process / people / system / governance",
-      "fix": "specific corrective action",
-      "severity": "Tier 1",
-      "confidence": "HIGH",
-      "confidenceReason": "one-line reasoning",
-      "assumptions": ["list", "flagged as data-backed or inferred"]
-    }
-  ],
-  "summary": {
-    "totalFindings": 0,
-    "totalExposure": "RM 0",
-    "topActions": ["action1", "action2", "action3"],
-    "dataGaps": ["gap1"]
-  }
-}`;
+Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
-const REVENUE_SCAN_PROMPT_SERVER = `You are running a Revenue Intelligence Scan. You are NOT looking for problems. You are looking for MONEY LEFT ON THE TABLE — data assets, relationships, service gaps, whitelabel opportunities, and pricing leakage that represent untapped revenue.
+const REVENUE_SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
+${domain ? `Active domain: ${domain}` : ''}
 
-Scan ALL uploaded data for these 5 revenue opportunity categories:
-1. DATA ASSETS: Unique data this organisation owns that partners, regulators, or competitors would pay for.
-2. RELATIONSHIP VALUE: Under-monetised customer, partner, supplier, or ecosystem relationships.
-3. SERVICE GAPS: Places where customers are paying for workarounds this organisation could solve.
-4. WHITELABEL POTENTIAL: Internal processes or tools that could be packaged and sold to others.
-5. PRICING LEAKAGE: Places where value is delivered but not charged for, or discounts applied without justification.
+You are running a Revenue Intelligence Scan. Your output must be fully deterministic — identical input must produce identical output.
 
-Return ONLY a valid JSON object. No markdown fences, no preamble, no explanation.
-Use this exact schema:
-{
-  "opportunities": [
-    {
-      "number": 1,
-      "category": "Data Assets",
-      "pattern": "what the opportunity is — one clear sentence",
-      "evidence": "specific data points from uploaded files",
-      "revenuePotential": "estimated value in currency with range and working",
-      "timeframe": "Quick Win",
-      "action": "single most important next step",
-      "confidence": "HIGH",
-      "confidenceReason": "one-line reasoning",
-      "assumptions": ["list", "flagged as data-backed or inferred"]
-    }
-  ],
-  "summary": {
-    "totalOpportunities": 0,
-    "totalPotential": "RM 0",
-    "quickWins": ["win1"],
-    "dataGaps": ["gap1"]
-  }
-}`;
+STRICT OUTPUT RULES — these override everything else:
+- Return UP TO 3 opportunities. Never return more than 3.
+- Do NOT fabricate opportunities to meet a count. Only return opportunities supported by the data.
+- A finding must meet defined thresholds. Do not infer unsupported patterns.
+- Rank opportunities by revenuePotential descending — highest estimated value first. This order is mandatory.
+- Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
+- pattern: one sentence only. Start with a noun.
+- evidence: maximum 2 sentences. Include at least one specific number, date, or data point from the uploaded files. No generalisations.
+- revenuePotential: state as a currency range (e.g. RM 50,000–120,000 per year). Include one-line basis for the estimate in parentheses.
+- timeframe: must be exactly "Quick Win (0–90 days)", "Medium Term (90–180 days)", or "Long Term (180+ days)". No other values accepted.
+- action: one imperative sentence only. Start with a verb.
+- confidence: must be exactly "HIGH", "MODERATE", or "LOW". No other values accepted.
+- category: must be exactly one of: "Data Assets", "Relationship Value", "Service Gaps", "Whitelabel Potential", "Pricing Leakage". No other values accepted.
+
+Scan for opportunities in this priority order — stop at 3:
+1. DATA ASSETS: Unique data this organisation owns that others would pay for
+2. RELATIONSHIP VALUE: Under-monetised customer, partner, or ecosystem relationships
+3. SERVICE GAPS: Places where customers pay for workarounds you could solve
+4. WHITELABEL POTENTIAL: Internal processes or tools packageable for resale
+5. PRICING LEAKAGE: Value delivered but not charged for
+
+Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
 app.post('/api/scan', async (req, res) => {
   try {
@@ -508,19 +492,17 @@ app.post('/api/scan', async (req, res) => {
     }
 
     const isRevenue = scanType === 'revenue';
-    const scanInstructions = isRevenue ? REVENUE_SCAN_PROMPT_SERVER : SCAN_PROMPT_SERVER;
+    const scanInstructions = isRevenue ? REVENUE_SCAN_PROMPT_SERVER(domain) : SCAN_PROMPT_SERVER(domain);
 
-    const systemParts = [
-      'You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.',
-      domain ? `Domain context:\n${domain}` : '',
-      scanInstructions,
-    ].filter(Boolean);
+    const systemPrompt = scanInstructions;
 
-    const systemPrompt = systemParts.join('\n\n');
+    const cappedSummary = dataSummary
+      ? dataSummary.slice(0, 18000).replace(/\s+\S*$/, '') + (dataSummary.length > 18000 ? '...' : '')
+      : '';
 
     const userContent = isRevenue
-      ? `Run a full Revenue Intelligence Scan on this operational data:\n\n${dataSummary}`
-      : `Run a full Enterprise Scan on this operational data:\n\n${dataSummary}`;
+      ? `Run a full Revenue Intelligence Scan on this operational data:\n\n${cappedSummary}`
+      : `Run a full Enterprise Scan on this operational data:\n\n${cappedSummary}`;
 
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: KEY });
