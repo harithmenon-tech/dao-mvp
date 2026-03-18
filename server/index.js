@@ -416,6 +416,142 @@ Today's date is ${new Date().toISOString().slice(0, 10)}.`;
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// /api/scan — Deterministic enterprise & revenue scan
+// Accepts: { dataSummary, scanType, domain }
+// Returns: { text: string } — JSON string produced by Claude at temperature 0
+// ─────────────────────────────────────────────────────────────────────────────
+const SCAN_PROMPT_SERVER = `You are running an Enterprise Scan. Analyse ALL uploaded data systematically.
+
+For each dataset, scan for these 5 pattern categories:
+1. CASH TRAPS: Financial items pending beyond threshold (>30 days)
+2. PROCESS LEAKS: Rework, exceptions, manual workarounds, duplicates (>3 times in 90 days)
+3. CAPACITY MISMATCHES: Overloaded or idle resources (utilisation >95% or <60%)
+4. RECURRING FAILURES: Same incident type repeating (>3 times in 90 days)
+5. DECISION STALLS: Decisions revisited without resolution (>3 discussions, no action)
+
+CRITICAL — CROSS-DATASET CORRELATION:
+For each finding in one dataset, check ALL other datasets for correlating patterns.
+If correlation found: present as SINGLE narrative with COMBINED impact.
+
+Return ONLY a valid JSON object. No markdown fences, no preamble, no explanation.
+Use this exact schema:
+{
+  "findings": [
+    {
+      "number": 1,
+      "pattern": "what is happening",
+      "evidence": "specific data points with dates and amounts",
+      "recurrence": "frequency and period",
+      "impact": "financial + time + risk, quantified",
+      "rootCause": "process / people / system / governance",
+      "fix": "specific corrective action",
+      "severity": "Tier 1",
+      "confidence": "HIGH",
+      "confidenceReason": "one-line reasoning",
+      "assumptions": ["list", "flagged as data-backed or inferred"]
+    }
+  ],
+  "summary": {
+    "totalFindings": 0,
+    "totalExposure": "RM 0",
+    "topActions": ["action1", "action2", "action3"],
+    "dataGaps": ["gap1"]
+  }
+}`;
+
+const REVENUE_SCAN_PROMPT_SERVER = `You are running a Revenue Intelligence Scan. You are NOT looking for problems. You are looking for MONEY LEFT ON THE TABLE — data assets, relationships, service gaps, whitelabel opportunities, and pricing leakage that represent untapped revenue.
+
+Scan ALL uploaded data for these 5 revenue opportunity categories:
+1. DATA ASSETS: Unique data this organisation owns that partners, regulators, or competitors would pay for.
+2. RELATIONSHIP VALUE: Under-monetised customer, partner, supplier, or ecosystem relationships.
+3. SERVICE GAPS: Places where customers are paying for workarounds this organisation could solve.
+4. WHITELABEL POTENTIAL: Internal processes or tools that could be packaged and sold to others.
+5. PRICING LEAKAGE: Places where value is delivered but not charged for, or discounts applied without justification.
+
+Return ONLY a valid JSON object. No markdown fences, no preamble, no explanation.
+Use this exact schema:
+{
+  "opportunities": [
+    {
+      "number": 1,
+      "category": "Data Assets",
+      "pattern": "what the opportunity is — one clear sentence",
+      "evidence": "specific data points from uploaded files",
+      "revenuePotential": "estimated value in currency with range and working",
+      "timeframe": "Quick Win",
+      "action": "single most important next step",
+      "confidence": "HIGH",
+      "confidenceReason": "one-line reasoning",
+      "assumptions": ["list", "flagged as data-backed or inferred"]
+    }
+  ],
+  "summary": {
+    "totalOpportunities": 0,
+    "totalPotential": "RM 0",
+    "quickWins": ["win1"],
+    "dataGaps": ["gap1"]
+  }
+}`;
+
+app.post('/api/scan', async (req, res) => {
+  try {
+    const { dataSummary, scanType, domain } = req.body;
+
+    if (!dataSummary) {
+      return res.status(400).json({ error: 'dataSummary is required' });
+    }
+
+    const KEY = getApiKey();
+    if (!KEY) {
+      return res.status(500).json({ error: 'API key not configured. Add ANTHROPIC_API_KEY to .env and restart.' });
+    }
+
+    const isRevenue = scanType === 'revenue';
+    const scanInstructions = isRevenue ? REVENUE_SCAN_PROMPT_SERVER : SCAN_PROMPT_SERVER;
+
+    const systemParts = [
+      'You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.',
+      domain ? `Domain context:\n${domain}` : '',
+      scanInstructions,
+    ].filter(Boolean);
+
+    const systemPrompt = systemParts.join('\n\n');
+
+    const userContent = isRevenue
+      ? `Run a full Revenue Intelligence Scan on this operational data:\n\n${dataSummary}`
+      : `Run a full Enterprise Scan on this operational data:\n\n${dataSummary}`;
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userContent }],
+    });
+
+    const raw = message.content[0].text.trim();
+    const clean = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    // Validate the response is parseable JSON before returning
+    try {
+      JSON.parse(clean);
+    } catch {
+      // Claude returned non-JSON — still surface the text so the frontend degrades gracefully
+      console.warn('[/api/scan] Claude returned non-JSON output; returning raw text');
+      return res.status(200).json({ text: raw });
+    }
+
+    return res.status(200).json({ text: clean });
+  } catch (err) {
+    console.error('[/api/scan error]', err.message, err.stack);
+    return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {

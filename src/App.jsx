@@ -417,10 +417,41 @@ function parseFile(file) {
           const sheets = {};
           let totalRows = 0;
           wb.SheetNames.forEach(sn => {
-            const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: "" });
-            const headers = data.length > 0 ? Object.keys(data[0]) : [];
-            sheets[sn] = { rows: data, headers, rowCount: data.length };
-            totalRows += data.length;
+            // Read as raw array-of-arrays to support non-standard meter file headers
+            const rawRows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: "" });
+
+            // Header detection: iterate from row 0, ignore rows with < 10 populated cells,
+            // use the first row with >= 10 non-empty cells as the header row
+            let headerRowIdx = -1;
+            for (let i = 0; i < rawRows.length; i++) {
+              const populated = rawRows[i].filter(
+                cell => cell !== null && cell !== undefined && String(cell).trim() !== ''
+              ).length;
+              if (populated >= 10) {
+                headerRowIdx = i;
+                break;
+              }
+            }
+
+            if (headerRowIdx === -1) {
+              sheets[sn] = {
+                rows: [],
+                headers: [],
+                rowCount: 0,
+                error: 'Could not detect header row — no row with 10 or more populated cells found',
+              };
+              return;
+            }
+
+            const headers = rawRows[headerRowIdx].map(h => String(h));
+            const dataRows = rawRows.slice(headerRowIdx + 1).map(row => {
+              const obj = {};
+              headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ""; });
+              return obj;
+            });
+
+            sheets[sn] = { rows: dataRows, headers, rowCount: dataRows.length };
+            totalRows += dataRows.length;
           });
           resolve({ name: file.name, type: "excel", sheets, sheetNames: wb.SheetNames, totalRows });
         } catch (err) { reject(err); }
@@ -1240,12 +1271,22 @@ export default function App() {
     if (datasets.length > 3) console.warn("Scan capped at 3 sources. Upload fewer files for best results.");
     const dataSummary = summarizeData(scanDatasets, true);
     try {
+      const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
+      const scanOverlay = getScanOverlay(activeDomainId);
+
       if (scanMode === "revenue") {
         setRevenueScanResults(null);
-        const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${REVENUE_SCAN_PROMPT}`;
-        const result = await callClaudeSync(sysPrompt, [
-          { role: "user", content: `Here is data from ${profile.org} (Industry: ${profile.industry}). Run a full Revenue Intelligence Scan.\n\n${dataSummary}` }
-        ]);
+        const scanResp = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataSummary, scanType: 'revenue', domain: scanOverlay }),
+        });
+        if (!scanResp.ok) {
+          const errData = await scanResp.json().catch(() => ({}));
+          throw new Error(errData.error || `Scan error (${scanResp.status})`);
+        }
+        const scanData = await scanResp.json();
+        const result = scanData.text || '';
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',
@@ -1257,13 +1298,17 @@ export default function App() {
         loadCommandCentreStats();
       } else {
         setScanResults(null);
-        const sysPrompt = `${IDENTITY_PROMPT}\n\n${STYLE_PROMPTS[profile.style] || ""}\n\nCEO: ${profile.name} | Org: ${profile.org} | Industry: ${profile.industry}\n\n${SCAN_PROMPT}`;
-        const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
-        const scanOverlay = getScanOverlay(activeDomainId);
-        const fullPrompt = scanOverlay ? scanOverlay + '\n\n' + sysPrompt : sysPrompt;
-        const result = await callClaudeSync(fullPrompt, [
-          { role: "user", content: `Here is all the operational data from ${profile.org}. Run a full Enterprise Scan.\n\n${dataSummary}` }
-        ]);
+        const scanResp = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataSummary, scanType: 'operational', domain: scanOverlay }),
+        });
+        if (!scanResp.ok) {
+          const errData = await scanResp.json().catch(() => ({}));
+          throw new Error(errData.error || `Scan error (${scanResp.status})`);
+        }
+        const scanData = await scanResp.json();
+        const result = scanData.text || '';
         setScanResults({ text: result, timestamp: new Date().toISOString() });
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',
