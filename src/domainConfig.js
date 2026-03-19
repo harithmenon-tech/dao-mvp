@@ -34,6 +34,15 @@ export const DOMAINS = {
     scanWeights: { revenue: 0.8, operational: 1.0, risk: 2.0 },
     escalationThreshold: 1,
     chiefPersona: 'a biotech strategy and commercialisation advisor'
+  },
+  water: {
+    id: 'water',
+    label: 'Water Utilities',
+    sector: 'Water Utilities',
+    focusAreas: ['Compliance', 'Operations', 'Quality', 'Infrastructure'],
+    scanWeights: { revenue: 0.7, operational: 1.5, risk: 2.0 },
+    escalationThreshold: 1,
+    chiefPersona: 'a water utility operations and compliance advisor'
   }
 };
 

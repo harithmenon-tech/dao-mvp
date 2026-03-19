@@ -422,7 +422,20 @@ Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 // Returns: { text: string } — JSON string produced by Claude at temperature 0
 // ─────────────────────────────────────────────────────────────────────────────
 const SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
-${domain ? `Active domain: ${domain}` : ''}
+${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
+
+WATER UTILITIES — UK REGULATORY THRESHOLDS (DWI / WHO):
+The following limits are legally binding under UK Drinking Water Inspectorate standards.
+Flag ANY reading that breaches these thresholds as a Tier 1 finding:
+- Aluminium (Al): maximum 0.200 mg/L. Any sample exceeding this limit is a regulatory breach.
+- Turbidity (treated water): maximum 1.0 NTU at point of treatment. Operational trigger at 4.0 NTU.
+- E. coli: maximum 0 CFU/100mL. Any detection — even a single count — is an immediate regulatory breach.
+
+When scanning water utility data:
+1. Check every Al, turbidity, and E. coli reading against these thresholds.
+2. If any reading breaches a threshold, it MUST be reported as a finding.
+3. State the exact breaching value, the threshold it breached, and the number of samples affected.
+4. Do not generalise. Cite the specific data point from the uploaded file.` : ''}
 
 You are running an Enterprise Scan. Your output must be fully deterministic — identical input must produce identical output.
 
@@ -451,7 +464,18 @@ If a finding spans multiple datasets, present it as one finding with combined ev
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
 const REVENUE_SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
-${domain ? `Active domain: ${domain}` : ''}
+${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
+
+WATER UTILITIES — UK REGULATORY THRESHOLDS (DWI / WHO):
+Compliance data against these thresholds represents a high-value data asset:
+- Aluminium (Al): maximum 0.200 mg/L
+- Turbidity (treated water): maximum 1.0 NTU at point of treatment. Operational trigger at 4.0 NTU.
+- E. coli: maximum 0 CFU/100mL. Any detection is a regulatory breach.
+
+When scanning for revenue opportunities in water utility data, consider:
+1. Longitudinal compliance records against these thresholds are a monetisable data asset.
+2. Breach patterns may indicate service gaps addressable through process improvements.
+3. Regulatory reporting obligations create whitelabel potential for compliance tooling.` : ''}
 
 You are running a Revenue Intelligence Scan. Your output must be fully deterministic — identical input must produce identical output.
 

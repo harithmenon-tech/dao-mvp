@@ -466,23 +466,32 @@ function parseFile(file) {
 }
 
 function summarizeData(datasets, fullScan = false) {
+  if (!Array.isArray(datasets)) return "";
   let summary = "";
   datasets.forEach((ds, i) => {
+    if (!ds || !ds.name) return;
     summary += `\n--- DATA SOURCE ${i + 1}: ${ds.name} ---\n`;
     if (ds.type === "csv") {
-      summary += `Type: CSV | Rows: ${ds.rowCount} | Columns: ${ds.headers.join(", ")}\n`;
-      const sample = ds.rows.slice(0, fullScan ? 15 : 3);
+      const headers = Array.isArray(ds.headers) ? ds.headers : [];
+      const rows = Array.isArray(ds.rows) ? ds.rows : [];
+      summary += `Type: CSV | Rows: ${ds.rowCount || 0} | Columns: ${headers.join(", ")}\n`;
+      const sample = rows.slice(0, fullScan ? 15 : 3);
       summary += `Sample (${sample.length} rows):\n${JSON.stringify(sample, null, 1)}\n`;
     } else if (ds.type === "excel") {
-      ds.sheetNames.forEach(sn => {
-        const sh = ds.sheets[sn];
-        summary += `Sheet "${sn}": ${sh.rowCount} rows | Columns: ${sh.headers.join(", ")}\n`;
-        const sample = sh.rows.slice(0, fullScan ? 15 : 3);
+      const sheetNames = Array.isArray(ds.sheetNames) ? ds.sheetNames : [];
+      const sheets = ds.sheets || {};
+      sheetNames.forEach(sn => {
+        const sh = sheets[sn];
+        if (!sh) return;
+        const headers = Array.isArray(sh.headers) ? sh.headers : [];
+        const rows = Array.isArray(sh.rows) ? sh.rows : [];
+        summary += `Sheet "${sn}": ${sh.rowCount || 0} rows | Columns: ${headers.join(", ")}\n`;
+        const sample = rows.slice(0, fullScan ? 15 : 3);
         summary += `Sample:\n${JSON.stringify(sample, null, 1)}\n`;
       });
     } else {
-      summary += `Type: Text | Length: ${ds.charCount} chars\n`;
-      summary += ds.content.substring(0, 2000) + "\n";
+      summary += `Type: Text | Length: ${ds.charCount || 0} chars\n`;
+      summary += (ds.content || "").substring(0, 2000) + "\n";
     }
   });
   return summary;
@@ -1087,6 +1096,7 @@ export default function App() {
     // Set active domain based on selected industry
     const isWater = p.industry && p.industry.toLowerCase().includes("water");
     localStorage.setItem('dao-active-domain', isWater ? 'water' : 'generic');
+    setActiveDomain(isWater ? 'water' : 'generic');
     const modeLabel = apiStatus === "live" ? "Live AI" : "Demo";
     setChatMsgs([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers — no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data — drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]);
   };
@@ -1309,6 +1319,7 @@ export default function App() {
     if (datasets.length === 0) return;
     setScanning(true);
     setView("scan");
+    try {
     const routedDatasets = registry.length > 0
       ? getIncludedDatasets(scanMode === 'revenue' ? 'revenue' : 'operational', registry)
           .map(record => datasets.find(d => d.name === record.name))
@@ -1374,7 +1385,12 @@ export default function App() {
       const errObj = { text: errText, timestamp: new Date().toISOString(), error: true };
       scanMode === "revenue" ? setRevenueScanResults(errObj) : setScanResults(errObj);
     }
-    setScanning(false);
+    } catch (e) {
+      const errObj = { text: `Error preparing scan: ${e.message}`, timestamp: new Date().toISOString(), error: true };
+      scanMode === "revenue" ? setRevenueScanResults(errObj) : setScanResults(errObj);
+    } finally {
+      setScanning(false);
+    }
     await evaluateAllEscalationTriggers();
   };
 
