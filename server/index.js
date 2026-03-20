@@ -421,7 +421,7 @@ Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 // Accepts: { dataSummary, scanType, domain }
 // Returns: { text: string } — JSON string produced by Claude at temperature 0
 // ─────────────────────────────────────────────────────────────────────────────
-const SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
+const SCAN_PROMPT_SERVER = (domain, currency) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
 ${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
 
 WATER UTILITIES — UK REGULATORY THRESHOLDS (DWI / WHO):
@@ -446,7 +446,7 @@ STRICT OUTPUT RULES — these override everything else:
 - Rank findings by severity first (Tier 1 before Tier 2 before Tier 3), then by financial impact descending. This order is mandatory.
 - Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
 - evidence: maximum 2 sentences. Include at least one specific number, date, or amount from the data. No generalisations.
-- impact: state as a single currency amount or range (e.g. RM 12,000 or RM 8,000–15,000). If not quantifiable, state "Non-financial: [one sentence]".
+- impact: ${currency ? `quantify as a ${currency} amount or range (e.g. ${currency} 12,000 or ${currency} 8,000–15,000)` : 'quantify as an amount or range using the currency in the data (e.g. 12,000 or 8,000–15,000)'}. If not quantifiable, state "Non-financial: [one sentence]".
 - fix: one imperative sentence only. Start with a verb.
 - severity: must be exactly "Tier 1", "Tier 2", or "Tier 3". No other values accepted.
 - confidence: must be exactly "HIGH", "MODERATE", or "LOW". No other values accepted.
@@ -463,7 +463,7 @@ If a finding spans multiple datasets, present it as one finding with combined ev
 
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
-const REVENUE_SCAN_PROMPT_SERVER = (domain) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
+const REVENUE_SCAN_PROMPT_SERVER = (domain, currency) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
 ${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
 
 WATER UTILITIES — UK REGULATORY THRESHOLDS (DWI / WHO):
@@ -487,7 +487,7 @@ STRICT OUTPUT RULES — these override everything else:
 - Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
 - pattern: one sentence only. Start with a noun.
 - evidence: maximum 2 sentences. Include at least one specific number, date, or data point from the uploaded files. No generalisations.
-- revenuePotential: state as a currency range (e.g. RM 50,000–120,000 per year). Include one-line basis for the estimate in parentheses.
+- revenuePotential: ${currency ? `state as a ${currency} range (e.g. ${currency} 50,000–120,000 per year)` : 'state as a range using the currency in the data (e.g. 50,000–120,000 per year)'}. Include one-line basis for the estimate in parentheses.
 - timeframe: must be exactly "Quick Win (0–90 days)", "Medium Term (90–180 days)", or "Long Term (180+ days)". No other values accepted.
 - action: one imperative sentence only. Start with a verb.
 - confidence: must be exactly "HIGH", "MODERATE", or "LOW". No other values accepted.
@@ -502,6 +502,66 @@ Scan for opportunities in this priority order — stop at 3:
 
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
+function detectCurrency(summary) {
+  if (!summary || typeof summary !== 'string') return null;
+  const FINANCIAL_WORDS =
+    /amount|cost|revenue|total|value|price|spend|income|billing|tariff|fee|charge/i;
+  const CODE_RE = /\b(GBP|USD|EUR|AUD|SGD|AED|MYR)\b/g;
+  // Extract column header lines only
+  const headerLines = summary
+    .split('\n')
+    .filter(l => /Columns:/i.test(l));
+  const headerText = headerLines.join(' ');
+  // Hierarchy 1: currency code in header with financial word
+  // within 40 chars. Digits alone are not sufficient.
+  const codeMatches = [...headerText.matchAll(CODE_RE)];
+  for (const m of codeMatches) {
+    const window = headerText.slice(
+      Math.max(0, m.index - 40),
+      m.index + m[0].length + 40
+    );
+    if (FINANCIAL_WORDS.test(window)) {
+      return m[1] === 'GBP' ? '£' : m[1] === 'EUR' ? '€' : m[1];
+    }
+  }
+  // Hierarchy 2: £ or € in header adjacent to a word character.
+  // $ excluded — too collision-prone in data files.
+  const symbolMatches = [...headerText.matchAll(/[£€]/g)];
+  for (const m of symbolMatches) {
+    const after = headerText.slice(m.index + 1, m.index + 10);
+    if (/\w/.test(after)) {
+      return m[0];
+    }
+  }
+  // Hierarchy 3: currency token in sample values immediately
+  // adjacent to digits. Covers "£5420", "GBP 5420", "5,420 GBP".
+  const patterns = [
+    { re: /:\s*"[£€]\s*[\d,]+/,
+      map: s => s.includes('£') ? '£' : '€' },
+    { re: /:\s*"\s*(GBP|USD|EUR|AUD|SGD|AED|MYR)\s*[\d,]+/,
+      map: (s, m) => m[1] === 'GBP' ? '£' : m[1] === 'EUR' ? '€' : m[1] },
+    { re: /:\s*"[\d,\s]+(GBP|USD|EUR|AUD|SGD|AED|MYR)\b/,
+      map: (s, m) => m[1] === 'GBP' ? '£' : m[1] === 'EUR' ? '€' : m[1] },
+  ];
+  for (const { re, map } of patterns) {
+    const m = summary.match(re);
+    if (m) return map(m[0], m);
+  }
+  // Hierarchy 4: currency code as whole word in filename line.
+  const fileLines = summary
+    .split('\n')
+    .filter(l => l.includes('DATA SOURCE'));
+  for (const line of fileLines) {
+    const m = line.match(/\b(GBP|USD|EUR|AUD|SGD|AED|MYR)\b/i);
+    if (m) {
+      const code = m[1].toUpperCase();
+      return code === 'GBP' ? '£' : code === 'EUR' ? '€' : code;
+    }
+  }
+  // Hierarchy 5: no confident detection — return null
+  return null;
+}
+
 app.post('/api/scan', async (req, res) => {
   try {
     const { dataSummary, scanType, domain } = req.body;
@@ -515,14 +575,15 @@ app.post('/api/scan', async (req, res) => {
       return res.status(500).json({ error: 'API key not configured. Add ANTHROPIC_API_KEY to .env and restart.' });
     }
 
-    const isRevenue = scanType === 'revenue';
-    const scanInstructions = isRevenue ? REVENUE_SCAN_PROMPT_SERVER(domain) : SCAN_PROMPT_SERVER(domain);
-
-    const systemPrompt = scanInstructions;
-
     const cappedSummary = dataSummary
       ? dataSummary.slice(0, 18000).replace(/\s+\S*$/, '') + (dataSummary.length > 18000 ? '...' : '')
       : '';
+    const detectedCurrency = detectCurrency(cappedSummary);
+
+    const isRevenue = scanType === 'revenue';
+    const scanInstructions = isRevenue ? REVENUE_SCAN_PROMPT_SERVER(domain, detectedCurrency) : SCAN_PROMPT_SERVER(domain, detectedCurrency);
+
+    const systemPrompt = scanInstructions;
 
     const userContent = isRevenue
       ? `Run a full Revenue Intelligence Scan on this operational data:\n\n${cappedSummary}`
