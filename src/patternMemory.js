@@ -75,7 +75,81 @@ export function detectPatterns(decisions) {
     });
   });
 
-  return patterns.sort((a, b) => b.count - a.count);
+  // ─── Provisional signal pass ─────────────────────────────────────────────
+  // For each decision that produced a single-entry group (count == 1), evaluate
+  // three two-attribute combinations and emit a provisional signal for each
+  // combination where both attributes are present and meaningful.
+  const PLACEHOLDERS = new Set(['Unknown']);
+  const isValid = val =>
+    val !== null &&
+    val !== undefined &&
+    String(val).trim() !== '' &&
+    !PLACEHOLDERS.has(val);
+
+  const provisionals = [];
+
+  decisions.forEach(d => {
+    const key = [
+      d.lifecycleStatus || 'Unknown',
+      d.tier            || 'Unknown',
+      d.type            || 'Unknown'
+    ].join('__');
+
+    // Only process decisions whose group is exactly one entry
+    if (!groups[key] || groups[key].length !== 1) return;
+
+    const tier            = d.tier;
+    const type            = d.type;
+    const lifecycleStatus = d.lifecycleStatus;
+
+    // Combination A: tier + type
+    if (isValid(tier) && isValid(type)) {
+      provisionals.push({
+        provisional: true,
+        label: `Early signal: Tier ${tier} ${type} decisions may be forming a recurring pattern.`,
+        tier,
+        type,
+        lifecycleStatus,
+        count: 1,
+        tags: [],
+        avgConfidence: null,
+        lastSeen: null
+      });
+    }
+
+    // Combination B: tier + lifecycleStatus
+    if (isValid(tier) && isValid(lifecycleStatus)) {
+      provisionals.push({
+        provisional: true,
+        label: `Early signal: Tier ${tier} decisions in the ${lifecycleStatus} phase may reflect a consistent decision pattern.`,
+        tier,
+        type,
+        lifecycleStatus,
+        count: 1,
+        tags: [],
+        avgConfidence: null,
+        lastSeen: null
+      });
+    }
+
+    // Combination C: type + lifecycleStatus
+    if (isValid(type) && isValid(lifecycleStatus)) {
+      provisionals.push({
+        provisional: true,
+        label: `Early signal: ${type} decisions during the ${lifecycleStatus} phase may indicate a systematic approach.`,
+        tier,
+        type,
+        lifecycleStatus,
+        count: 1,
+        tags: [],
+        avgConfidence: null,
+        lastSeen: null
+      });
+    }
+  });
+
+  // Confirmed patterns first (sorted by count descending), provisional signals after
+  return [...patterns.sort((a, b) => b.count - a.count), ...provisionals];
 }
 
 /**
