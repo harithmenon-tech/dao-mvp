@@ -1352,6 +1352,9 @@ export default function App() {
           throw new Error(errData.error || `Scan error (${scanResp.status})`);
         }
         const scanData = await scanResp.json();
+        if (scanData.error === 'scan_output_invalid') {
+          throw new Error('Scan could not produce a valid structured output. Please retry.');
+        }
         const result = transformScanJsonToText(scanData.text || '');
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
         saveScanRecord(
@@ -1374,6 +1377,9 @@ export default function App() {
           throw new Error(errData.error || `Scan error (${scanResp.status})`);
         }
         const scanData = await scanResp.json();
+        if (scanData.error === 'scan_output_invalid') {
+          throw new Error('Scan could not produce a valid structured output. Please retry.');
+        }
         const result = transformScanJsonToText(scanData.text || '');
         setScanResults({ text: result, timestamp: new Date().toISOString() });
         saveScanRecord(

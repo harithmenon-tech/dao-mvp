@@ -542,15 +542,37 @@ app.post('/api/scan', async (req, res) => {
     const raw = message.content[0].text.trim();
     const clean = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
-    // Validate the response is parseable JSON before returning
-    try {
-      JSON.parse(clean);
-    } catch {
-      // Claude returned non-JSON — still surface the text so the frontend degrades gracefully
-      console.warn('[/api/scan] Claude returned non-JSON output; returning raw text');
-      return res.status(200).json({ text: raw });
+    const expectedKey = scanType === 'revenue' ? 'opportunities' : 'findings';
+    function isValidScanOutput(str) {
+      try {
+        const parsed = JSON.parse(str);
+        return Array.isArray(parsed[expectedKey]) && parsed[expectedKey].length > 0;
+      } catch {
+        return false;
+      }
     }
-
+    if (!isValidScanOutput(clean)) {
+      console.warn('[/api/scan] Attempt 1 failed validation — retrying once');
+      try {
+        const retry = await client.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          temperature: 0,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userContent }],
+        });
+        const retryRaw = retry.content[0].text.trim();
+        const retryClean = retryRaw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        if (!isValidScanOutput(retryClean)) {
+          console.warn('[/api/scan] Retry also failed validation — returning error');
+          return res.status(422).json({ error: 'scan_output_invalid', text: retryRaw });
+        }
+        return res.status(200).json({ text: retryClean });
+      } catch (retryErr) {
+        console.error('[/api/scan] Retry threw:', retryErr.message);
+        return res.status(422).json({ error: 'scan_output_invalid', text: raw });
+      }
+    }
     return res.status(200).json({ text: clean });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
