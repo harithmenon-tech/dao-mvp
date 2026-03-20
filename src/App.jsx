@@ -3278,8 +3278,8 @@ export default function App() {
                           {isDueToday && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${AMBER}20`, color: AMBER }}>Due Today</span>}
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20,
-                            background: entry.tier === "3" ? `${RED}20` : entry.tier === "2" ? `${AMBER}20` : `${GREEN}20`,
-                            color: entry.tier === "3" ? RED : entry.tier === "2" ? AMBER : GREEN
+                            background: entry.tier === "1" ? `${RED}20` : entry.tier === "2" ? `${AMBER}20` : `${GREEN}20`,
+                            color: entry.tier === "1" ? RED : entry.tier === "2" ? AMBER : GREEN
                           }}>Tier {entry.tier}</span>
                           {entry.lifecycleStatus && (
                             <span style={{
