@@ -399,6 +399,11 @@ SCAN SUMMARY
 // ═══════════════════════════════════════════════════════════════
 // FILE PARSING
 // ═══════════════════════════════════════════════════════════════
+function isMeterExport(filename) {
+  const n = (filename || '').toLowerCase();
+  return n.includes('meter') || n.includes('wtw') ||
+         n.includes('ami') || n.includes('amr') || n.includes('telemetry');
+}
 function parseFile(file) {
   return new Promise((resolve, reject) => {
     const name = file.name.toLowerCase();
@@ -406,6 +411,9 @@ function parseFile(file) {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        ...(isMeterExport(file.name) && {
+          beforeFirstChunk: (chunk) => chunk.split('\n').slice(7).join('\n')
+        }),
         complete: (r) => resolve({ name: file.name, type: "csv", rows: r.data, headers: r.meta.fields, rowCount: r.data.length }),
         error: reject
       });
