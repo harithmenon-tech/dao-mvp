@@ -473,12 +473,22 @@ function parseFile(file) {
   });
 }
 
+function classifyDataset(name) {
+  const n = (name || '').toLowerCase();
+  if (/billing|invoice|billed|receivable|charges|revenue_detail/.test(n)) return 'BILLING';
+  if (/tariff|rate|pricing|schedule|price_list|rate_card/.test(n)) return 'TARIFF';
+  return null;
+}
+
+
 function summarizeData(datasets, fullScan = false) {
   if (!Array.isArray(datasets)) return "";
   let summary = "";
   datasets.forEach((ds, i) => {
     if (!ds || !ds.name) return;
-    summary += `\n--- DATA SOURCE ${i + 1}: ${ds.name} ---\n`;
+    const classification = classifyDataset(ds.name);
+    const classTag = classification ? ` [CLASSIFIED: ${classification}]` : '';
+    summary += `\n--- DATA SOURCE ${i + 1}: ${ds.name}${classTag} ---\n`;
     if (ds.type === "csv") {
       const headers = Array.isArray(ds.headers) ? ds.headers : [];
       const rows = Array.isArray(ds.rows) ? ds.rows : [];

@@ -461,6 +461,15 @@ Scan for findings in this priority order — stop at 3:
 
 If a finding spans multiple datasets, present it as one finding with combined evidence. Do not duplicate it across categories.
 
+CROSS-FILE BILLING–TARIFF RULE:
+If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a source classified as [CLASSIFIED: TARIFF], you MUST perform the following check as a mandatory scan step:
+- Identify the tariff rate(s) effective in each billing period from the TARIFF source.
+- Compare the amounts billed in the BILLING source against those effective rates for the same period.
+- If billed amounts do not match the applicable tariff rate for any period, this constitutes a finding.
+- Report such divergence as a standalone finding with: the period affected, the expected amount (derived from tariff × volume if volume data is present, or the stated tariff rate), the actual billed amount, and the variance.
+- If data is insufficient to calculate the variance precisely, state the gap qualitatively and flag confidence as LOW.
+This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces a finding, include it within the 3-finding cap ranked by severity.
+
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
 const REVENUE_SCAN_PROMPT_SERVER = (domain, currency) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
@@ -499,6 +508,15 @@ Scan for opportunities in this priority order — stop at 3:
 3. SERVICE GAPS: Places where customers pay for workarounds you could solve
 4. WHITELABEL POTENTIAL: Internal processes or tools packageable for resale
 5. PRICING LEAKAGE: Value delivered but not charged for
+
+CROSS-FILE BILLING–TARIFF RULE:
+If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a source classified as [CLASSIFIED: TARIFF], you MUST perform the following check as a mandatory scan step:
+- Identify the tariff rate(s) effective in each billing period from the TARIFF source.
+- Compare the amounts billed in the BILLING source against those effective rates for the same period.
+- If billed amounts do not match the applicable tariff rate for any period, this constitutes a revenue opportunity (either under-collection or over-collection requiring correction).
+- Report such divergence as a standalone opportunity under category "Pricing Leakage" with: the period affected, the expected amount (derived from tariff × volume if volume data is present, or the stated tariff rate), the actual billed amount, and the variance.
+- If data is insufficient to calculate the variance precisely, state the gap qualitatively and flag confidence as LOW.
+This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces an opportunity, include it within the 3-opportunity cap ranked by revenuePotential.
 
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.`;
 
