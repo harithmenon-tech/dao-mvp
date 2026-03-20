@@ -771,8 +771,8 @@ function HealthRing({ resolved, total }) {
 
 function FindingCard({ finding, resolved, onToggle }) {
   const [expanded, setExpanded] = useState(false);
-  const tierColor = finding.tier === "3" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
-  const tierLabel = finding.tier === "3" ? "TIER 3 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 1 — LOW";
+  const tierColor = finding.tier === "1" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
+  const tierLabel = finding.tier === "1" ? "TIER 1 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 3 — LOW";
   const extractAmount = () => {
     const m = finding.impact.match(/RM[\s]?[\d,\s]+(?:[–\-][\s]?RM?[\s]?[\d,]+)?/i);
     return m ? m[0].trim() : finding.maxAmount > 0 ? `RM ${finding.maxAmount.toLocaleString()}` : null;
@@ -2546,7 +2546,7 @@ export default function App() {
                 </div>
                 <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "#0EA5E9", marginBottom: 12 }}>TOP PRIORITIES THIS WEEK</div>
-                  {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).sort((a, b) => parseInt(b.tier) - parseInt(a.tier) || b.dailyCost - a.dailyCost).slice(0, 3).map((f, i, arr) => (
+                  {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).sort((a, b) => parseInt(a.tier) - parseInt(b.tier) || b.dailyCost - a.dailyCost).slice(0, 3).map((f, i, arr) => (
                     <div key={f.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: i < arr.length - 1 ? 10 : 0, marginBottom: i < arr.length - 1 ? 10 : 0, borderBottom: i < arr.length - 1 ? "1px solid #1E3A5F" : "none" }}>
                       <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981"}20`, color: f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1 }}>
@@ -2994,7 +2994,7 @@ export default function App() {
                               <span style={{ fontSize: 12, color: GREEN }}>{resolvedFindings.length} resolved</span>
                               <span style={{ fontSize: 12, color: RED }}>RM {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()} exposure</span>
                             </div>
-                            {[...parsedFindings].sort((a, b) => parseInt(b.tier) - parseInt(a.tier)).map(f => (
+                            {[...parsedFindings].sort((a, b) => parseInt(a.tier) - parseInt(b.tier)).map(f => (
                               <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding}/>
                             ))}
                           </div>
