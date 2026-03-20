@@ -445,7 +445,7 @@ STRICT OUTPUT RULES — these override everything else:
 - A finding must meet defined thresholds. Do not infer unsupported patterns.
 - Rank findings by severity first (Tier 1 before Tier 2 before Tier 3), then by financial impact descending. This order is mandatory.
 - Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
-- evidence: maximum 2 sentences. Include at least one specific number, date, or amount from the data. No generalisations.
+- evidence: maximum 2 sentences. You MUST name the source file using the exact filename from the DATA SOURCE header, and cite the specific row value, date, or calculated figure that supports this finding. Format: "[Source: <exact filename>] <value/date/calc>". No generalisations. No unattributed assertions.
 - impact: ${currency ? `quantify as a ${currency} amount or range (e.g. ${currency} 12,000 or ${currency} 8,000–15,000)` : 'quantify as an amount or range using the currency in the data (e.g. 12,000 or 8,000–15,000)'}. If not quantifiable, state "Non-financial: [one sentence]".
 - fix: one imperative sentence only. Start with a verb.
 - severity: must be exactly "Tier 1", "Tier 2", or "Tier 3". No other values accepted.
@@ -495,7 +495,7 @@ STRICT OUTPUT RULES — these override everything else:
 - Rank opportunities by revenuePotential descending — highest estimated value first. This order is mandatory.
 - Every field is required. Use "Not identified" for any field where data is insufficient. Never omit a field.
 - pattern: one sentence only. Start with a noun.
-- evidence: maximum 2 sentences. Include at least one specific number, date, or data point from the uploaded files. No generalisations.
+- evidence: maximum 2 sentences. You MUST name the source file using the exact filename from the DATA SOURCE header, and cite the specific row value, date, or calculated figure that supports this opportunity. Format: "[Source: <exact filename>] <value/date/calc>". No generalisations. No unattributed assertions.
 - revenuePotential: ${currency ? `state as a ${currency} range (e.g. ${currency} 50,000–120,000 per year)` : 'state as a range using the currency in the data (e.g. 50,000–120,000 per year)'}. Include one-line basis for the estimate in parentheses.
 - timeframe: must be exactly "Quick Win (0–90 days)", "Medium Term (90–180 days)", or "Long Term (180+ days)". No other values accepted.
 - action: one imperative sentence only. Start with a verb.
