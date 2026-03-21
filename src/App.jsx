@@ -1577,14 +1577,17 @@ export default function App() {
         : null;
       const chiefContext = parsedFindings.length > 0 ? {
         findings: parsedFindings.slice(0, 3).map(f => ({
-          title: f.title,
-          severity: f.severity,
-          impact: f.impact
+          title: f.pattern || '',
+          severity: f.tier || '',
+          impact: f.impact || '',
+          evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
+          fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
         })),
         totalExposure: totalExposureStr,
         scanType: scanMode,
         domain: activeDomain,
-        scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null
+        scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
+        dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
       } : null;
 
       const chiefRes = await fetch('/api/chief', {
@@ -2321,14 +2324,17 @@ export default function App() {
                       : null;
                     const chiefContext = parsedFindings.length > 0 ? {
                       findings: parsedFindings.slice(0, 3).map(f => ({
-                        title: f.title,
-                        severity: f.severity,
-                        impact: f.impact
+                        title: f.pattern || '',
+                        severity: f.tier || '',
+                        impact: f.impact || '',
+                        evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
+                        fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
                       })),
                       totalExposure: totalExposureStr,
                       scanType: scanMode,
                       domain: activeDomain,
-                      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null
+                      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
+                      dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
                     } : null;
                     const chiefRes = await fetch('/api/chief', {
                       method: 'POST',
