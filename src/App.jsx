@@ -1367,6 +1367,9 @@ export default function App() {
         }
         const result = transformScanJsonToText(scanData.text || '');
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
+        if (patterns.length === 0 && Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
+          setPatterns(scanData.patterns);
+        }
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',
           scanDatasets,
@@ -1392,6 +1395,9 @@ export default function App() {
         }
         const result = transformScanJsonToText(scanData.text || '');
         setScanResults({ text: result, timestamp: new Date().toISOString() });
+        if (patterns.length === 0 && Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
+          setPatterns(scanData.patterns);
+        }
         saveScanRecord(
           scanMode === 'revenue' ? 'revenue' : 'operational',
           scanDatasets,
