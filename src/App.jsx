@@ -1570,32 +1570,33 @@ export default function App() {
     setStreaming(true);
 
     try {
-      const chiefContext = [
-        `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
-        `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
-        `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
-        `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`,
-        `DOMAIN: ${domainConfig.label} | PERSONA: Act as ${domainConfig.chiefPersona}`
-      ].join('\n\n');
-      const sysPrompt = buildSystemPrompt() + '\n\n' + chiefContext;
-      // Include all data context if available
-      let contextMsg = fullContent;
-      const isFirstMessage = newMsgs.filter(m => m.role === "user").length === 1;
-      const isDataQuestion = /data|scan|analyse|analyze|show|tell me about|pattern|finding|upload/i.test(fullContent);
+      const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
+      const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
+      const totalExposureStr = totalExposureAmount > 0
+        ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
+        : null;
+      const chiefContext = parsedFindings.length > 0 ? {
+        findings: parsedFindings.slice(0, 3).map(f => ({
+          title: f.title,
+          severity: f.severity,
+          impact: f.impact
+        })),
+        totalExposure: totalExposureStr,
+        scanType: scanMode,
+        domain: activeDomain,
+        scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null
+      } : null;
 
-      if (datasets.length > 0 && chatFiles.length === 0 && (isFirstMessage || isDataQuestion)) {
-        const dataSummary = summarizeData(datasets, false);
-        contextMsg = `[DATA CONTEXT — ${datasets.length} source(s) connected]\n${dataSummary}\n\n[QUESTION]\n${fullContent}`;
-      }
-
-      // Trim to last 6 messages to control token usage
-      const history = newMsgs.slice(-6).map((m, idx) => ({
-        role: m.role,
-        content: m.role === "user" && idx === newMsgs.slice(-6).length - 1 ? contextMsg : m.content
-      }));
-
-      const streamMsgs = [...newMsgs, { role: "assistant", content: "" }];
-      setChatMsgs(streamMsgs);
+      const chiefRes = await fetch('/api/chief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: fullContent, chiefContext })
+      });
+      const chiefData = await chiefRes.json();
+      const chiefText = chiefData.text || 'I was unable to generate a response. Please try again.';
+      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText }]);
+      setStreaming(false);
+      return;
 
       await callClaude(sysPrompt, history, (partial) => {
         setChatMsgs(prev => {
@@ -2313,24 +2314,30 @@ export default function App() {
                   setChatMsgs(newMsgs);
                   setStreaming(true);
                   try {
-                    const chiefCtx = [
-                      `DECISION JOURNAL: ${JSON.stringify(loadJournal().slice(-10))}`,
-                      `RISK SIGNALS: ${JSON.stringify(riskRadar.slice(0, 5))}`,
-                      `PATTERNS DETECTED: ${JSON.stringify(patterns.slice(0, 5))}`,
-                      `CURRENT DATE: ${new Date().toISOString().split('T')[0]}`,
-                      `DOMAIN: ${domainConfig.label} | PERSONA: Act as ${domainConfig.chiefPersona}`
-                    ].join('\n\n');
-                    const sysP = buildSystemPrompt() + '\n\n' + chiefCtx;
-                    const history = newMsgs.slice(-6).map(m => ({ role: m.role, content: m.content }));
-                    const streamMsgs = [...newMsgs, { role: "assistant", content: "" }];
-                    setChatMsgs(streamMsgs);
-                    await callClaude(sysP, history, (partial) => {
-                      setChatMsgs(prev => {
-                        const updated = [...prev];
-                        updated[updated.length - 1] = { role: "assistant", content: partial };
-                        return updated;
-                      });
+                    const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
+                    const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
+                    const totalExposureStr = totalExposureAmount > 0
+                      ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
+                      : null;
+                    const chiefContext = parsedFindings.length > 0 ? {
+                      findings: parsedFindings.slice(0, 3).map(f => ({
+                        title: f.title,
+                        severity: f.severity,
+                        impact: f.impact
+                      })),
+                      totalExposure: totalExposureStr,
+                      scanType: scanMode,
+                      domain: activeDomain,
+                      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null
+                    } : null;
+                    const chiefRes = await fetch('/api/chief', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ message: promptText, chiefContext })
                     });
+                    const chiefData = await chiefRes.json();
+                    const chiefText = chiefData.text || 'I was unable to generate a response. Please try again.';
+                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText }]);
                   } catch (e) {
                     setChatMsgs(prev => {
                       const updated = [...prev];
