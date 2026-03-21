@@ -726,8 +726,24 @@ function buildContextBlock(ctx) {
         const title = f.title || 'Untitled';
         const severity = f.severity || '';
         const impact = f.impact || '';
+        const evidence = f.evidence
+          ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence)
+          : '';
+        const fix = f.fix
+          ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix)
+          : '';
         lines.push(`${i + 1}. [${severity}] ${title} — Impact: ${impact}`);
+        if (evidence) lines.push(`   Evidence: ${evidence}`);
+        if (fix) lines.push(`   Recommended fix: ${fix}`);
       });
+    }
+    if (ctx.dataSummary && typeof ctx.dataSummary === 'string' && ctx.dataSummary.trim() !== '') {
+      const capped = ctx.dataSummary.length > 1200
+        ? ctx.dataSummary.slice(0, 1200).replace(/\S*$/, '').trim() + '...'
+        : ctx.dataSummary.trim();
+      lines.push('');
+      lines.push('[UPLOADED DATA SUMMARY]');
+      lines.push(capped);
     }
     return lines.join('\n');
   } catch {
