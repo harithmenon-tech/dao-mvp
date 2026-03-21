@@ -582,6 +582,46 @@ function detectCurrency(summary) {
   return null;
 }
 
+function derivePatterns(findings) {
+  try {
+    const patterns = [];
+
+    // Group by rootCause — emit one entry if group has >= 2 findings
+    const byCause = {};
+    for (const f of findings) {
+      const key = f.rootCause;
+      if (key) {
+        if (!byCause[key]) byCause[key] = [];
+        byCause[key].push(f);
+      }
+    }
+    for (const [cause, group] of Object.entries(byCause)) {
+      if (group.length >= 2) {
+        patterns.push({ signal: 'rootCause', value: cause, count: group.length });
+      }
+    }
+
+    // Group by severity — emit one entry if group has >= 2 findings
+    const bySeverity = {};
+    for (const f of findings) {
+      const key = f.severity;
+      if (key) {
+        if (!bySeverity[key]) bySeverity[key] = [];
+        bySeverity[key].push(f);
+      }
+    }
+    for (const [sev, group] of Object.entries(bySeverity)) {
+      if (group.length >= 2) {
+        patterns.push({ signal: 'severity', value: sev, count: group.length });
+      }
+    }
+
+    return patterns;
+  } catch {
+    return [];
+  }
+}
+
 app.post('/api/scan', async (req, res) => {
   try {
     const { dataSummary, scanType, domain } = req.body;
@@ -648,13 +688,25 @@ app.post('/api/scan', async (req, res) => {
           console.warn('[/api/scan] Retry also failed validation — returning error');
           return res.status(422).json({ error: 'scan_output_invalid', text: retryRaw });
         }
-        return res.status(200).json({ text: retryClean });
+        let retryDerivedPatterns = [];
+        try {
+          const retryParsedForPatterns = JSON.parse(retryClean);
+          const retryFindingsForPatterns = Array.isArray(retryParsedForPatterns.findings) ? retryParsedForPatterns.findings : [];
+          retryDerivedPatterns = derivePatterns(retryFindingsForPatterns);
+        } catch { retryDerivedPatterns = []; }
+        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns });
       } catch (retryErr) {
         console.error('[/api/scan] Retry threw:', retryErr.message);
         return res.status(422).json({ error: 'scan_output_invalid', text: raw });
       }
     }
-    return res.status(200).json({ text: clean });
+    let derivedPatterns = [];
+    try {
+      const parsedForPatterns = JSON.parse(clean);
+      const findingsForPatterns = Array.isArray(parsedForPatterns.findings) ? parsedForPatterns.findings : [];
+      derivedPatterns = derivePatterns(findingsForPatterns);
+    } catch { derivedPatterns = []; }
+    return res.status(200).json({ text: clean, patterns: derivedPatterns });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
     return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });
