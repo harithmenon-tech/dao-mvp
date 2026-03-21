@@ -1600,24 +1600,8 @@ export default function App() {
       setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText }]);
       setStreaming(false);
       return;
-
-      await callClaude(sysPrompt, history, (partial) => {
-        setChatMsgs(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: partial };
-          return updated;
-        });
-      });
     } catch (e) {
-      setChatMsgs(prev => {
-        const updated = [...prev];
-        if (updated.length > 0 && updated[updated.length - 1].role === "assistant" && !updated[updated.length - 1].content) {
-          updated[updated.length - 1] = { role: "assistant", content: `Error: ${e.message}` };
-        } else {
-          updated.push({ role: "assistant", content: `Error: ${e.message}` });
-        }
-        return updated;
-      });
+      setChatMsgs(prev => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
     }
     setStreaming(false);
   };
@@ -2247,7 +2231,7 @@ export default function App() {
                               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                               .replace(/\n/g, '<br/>')
                           }} />
-                        : (msg.content || (streaming && i === chatMsgs.length - 1 ? <span style={{ color: TEXT_DIM }}>Thinking...</span> : ""))}
+                        : msg.content}
                     </div>
                     {/* Auto-Log Decision Button for AI messages with decisions */}
                     {msg.role === "assistant" && msg.content && detectDecisionInMessage(msg.content) && !streaming && (
@@ -2283,6 +2267,15 @@ export default function App() {
                     )}
                   </div>
                 ))}
+                {streaming && (
+                  <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
+                    <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`,
+                      borderRadius: "16px 16px 16px 4px", padding: "10px 14px",
+                      fontSize: 13, color: TEXT_DIM }}>
+                      Thinking...
+                    </div>
+                  </div>
+                )}
                 <div ref={chatEnd}/>
               </div>
 
