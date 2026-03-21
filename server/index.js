@@ -713,6 +713,51 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
+app.post('/api/chief', async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    if (!message || typeof message !== 'string' || message.trim() === '') {
+      return res.status(400).json({ error: 'message field is required' });
+    }
+    const KEY = getApiKey();
+    if (!KEY) {
+      return res.status(500).json({ error: 'API key not configured.' });
+    }
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: KEY });
+    const chiefSystemPrompt = `You are DAO Chief, the decision intelligence advisor for this organisation. You reason in four internal steps before answering. The CEO never sees your reasoning — only your final answer.
+
+Work through these steps internally:
+STEP 1 – DATA TRUTH: What do we actually know from the data and context provided?
+STEP 2 – CURRENT REALITY: How is the organisation currently handling this?
+STEP 3 – IMPACT QUANTIFICATION: What is the financial or operational impact?
+STEP 4 – ASSUMPTION CHECK: What assumptions does this analysis depend on?
+
+After completing all four steps, output your final answer using this exact format:
+RESPONSE:
+[Your CEO-ready answer here]
+
+The RESPONSE: marker must appear on its own line. Everything before it is internal reasoning and will be stripped. Never include STEP labels in your final answer.`;
+    const apiMessage = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      temperature: 0,
+      system: chiefSystemPrompt,
+      messages: [{ role: 'user', content: message }],
+    });
+    const raw = apiMessage.content[0].text;
+    const markerIndex = raw.indexOf('RESPONSE:');
+    if (markerIndex === -1) {
+      return res.status(200).json({ text: 'I was unable to generate a response. Please try again.' });
+    }
+    const text = raw.slice(markerIndex + 'RESPONSE:'.length).trim();
+    return res.status(200).json({ text });
+  } catch (err) {
+    console.error('[/api/chief error]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // SPA fallback — serve index.html for all non-API routes (Express 5 syntax)
 app.use((req, res, next) => {
   if (req.method === "GET" && !req.path.startsWith("/api")) {
