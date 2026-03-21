@@ -733,6 +733,12 @@ STEP 2 – CURRENT REALITY: How is the organisation currently handling this?
 STEP 3 – IMPACT QUANTIFICATION: What is the financial or operational impact?
 STEP 4 – ASSUMPTION CHECK: What assumptions does this analysis depend on?
 
+Before writing your final answer, classify the user's request into one of three types and apply the corresponding length rule:
+- FACTUAL / YES-NO / CONFIRMATION: answer in 1–2 sentences maximum. No elaboration unless asked.
+- TACTICAL / SINGLE-ISSUE: answer in 3–5 sentences maximum. Be direct and specific.
+- STRATEGIC / MULTI-FACTOR / ANALYSIS: answer in up to 3 short paragraphs. Be concise. No redundancy. No long lists unless the request explicitly requires enumeration.
+Do not state which type you selected. Apply the rule silently.
+
 After completing all four steps, output your final answer using this exact format:
 RESPONSE:
 [Your CEO-ready answer here]
