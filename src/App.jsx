@@ -891,11 +891,11 @@ function PatternMemoryPanel({ patterns }) {
             patterns.map(p => (
               <div key={p.id} style={{ padding: "10px 0", borderBottom: "1px solid #1a1a3a" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>{p.label}</span>
-                  <span style={{ fontSize: 11, color: "#8888ff", flexShrink: 0 }}>×{p.count}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>{(() => { const m = p.label.match(/^(\w+):\s(.+)\s\(×\d+\)$/); if (!m) return p.label; const [, field, value] = m; if (field === "rootCause") return `Recurring root cause: ${value}`; if (field === "severity") return `Repeated severity: ${value}`; return `${field}: ${value}`; })()}</span>
+                  <span style={{ fontSize: 11, color: "#8888ff", flexShrink: 0 }}>×{p.count} findings</span>
                 </div>
                 <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#666688", marginBottom: p.tags.length > 0 ? 6 : 0 }}>
-                  <span>Avg confidence: {p.avgConfidence}</span>
+                  {p.avgConfidence > 0 && <span>Avg confidence: {p.avgConfidence}</span>}
                   <span>Last seen: {new Date(p.lastSeen).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 {p.tags.length > 0 && (
