@@ -713,9 +713,31 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
+function buildContextBlock(ctx) {
+  try {
+    const lines = [];
+    lines.push(`[SCAN CONTEXT — as of ${ctx.scannedAt || 'latest scan'}]`);
+    if (ctx.scanType) lines.push(`Scan type: ${ctx.scanType}`);
+    if (ctx.domain) lines.push(`Domain: ${ctx.domain}`);
+    if (ctx.totalExposure) lines.push(`Total financial exposure identified: ${ctx.totalExposure}`);
+    if (Array.isArray(ctx.findings) && ctx.findings.length > 0) {
+      lines.push('Findings:');
+      ctx.findings.slice(0, 3).forEach((f, i) => {
+        const title = f.title || 'Untitled';
+        const severity = f.severity || '';
+        const impact = f.impact || '';
+        lines.push(`${i + 1}. [${severity}] ${title} — Impact: ${impact}`);
+      });
+    }
+    return lines.join('\n');
+  } catch {
+    return '';
+  }
+}
+
 app.post('/api/chief', async (req, res) => {
   try {
-    const { message } = req.body || {};
+    const { message, chiefContext } = req.body || {};
     if (!message || typeof message !== 'string' || message.trim() === '') {
       return res.status(400).json({ error: 'message field is required' });
     }
@@ -744,12 +766,19 @@ RESPONSE:
 [Your CEO-ready answer here]
 
 The RESPONSE: marker must appear on its own line. Everything before it is internal reasoning and will be stripped. Never include STEP labels in your final answer.`;
+    const hasContext = chiefContext &&
+      Array.isArray(chiefContext.findings) &&
+      chiefContext.findings.length > 0;
+    const contextBlock = hasContext ? buildContextBlock(chiefContext) : '';
+    const userContent = hasContext
+      ? contextBlock + '\n\n[CEO QUESTION]\n' + message
+      : message;
     const apiMessage = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       temperature: 0,
       system: chiefSystemPrompt,
-      messages: [{ role: 'user', content: message }],
+      messages: [{ role: 'user', content: userContent }],
     });
     const raw = apiMessage.content[0].text;
     const markerIndex = raw.indexOf('RESPONSE:');
