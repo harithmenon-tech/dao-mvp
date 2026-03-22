@@ -1596,12 +1596,15 @@ export default function App() {
         body: JSON.stringify({ message: fullContent, chiefContext })
       });
       const chiefData = await chiefRes.json();
-      const chiefText = chiefData.text || 'I was unable to generate a response. Please try again.';
-      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText }]);
+      const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
+      const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
+      const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
+      const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf }]);
       setStreaming(false);
       return;
     } catch (e) {
-      setChatMsgs(prev => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
+      setChatMsgs(prev => [...prev, { role: "assistant", content: `Error: ${e.message}`, confidence: null }]);
     }
     setStreaming(false);
   };
@@ -2226,11 +2229,29 @@ export default function App() {
                       whiteSpace: "pre-wrap", wordBreak: "break-word"
                     }}>
                       {msg.role === 'assistant'
-                        ? <span dangerouslySetInnerHTML={{ __html:
-                            (msg.content || '')
-                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              .replace(/\n/g, '<br/>')
-                          }} />
+                        ? <>
+                            <span dangerouslySetInnerHTML={{ __html:
+                                (msg.content || '')
+                                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                  .replace(/\n/g, '<br/>')
+                              }} />
+                            {msg.confidence && (
+                              <span style={{
+                                display: 'inline-block',
+                                marginTop: 8,
+                                padding: '2px 8px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                borderRadius: 10,
+                                letterSpacing: 0.5,
+                                background: msg.confidence === 'HIGH' ? '#10B98120' : msg.confidence === 'MODERATE' ? '#F59E0B20' : '#94A3B820',
+                                color: msg.confidence === 'HIGH' ? '#10B981' : msg.confidence === 'MODERATE' ? '#F59E0B' : '#94A3B8',
+                                border: `1px solid ${msg.confidence === 'HIGH' ? '#10B98140' : msg.confidence === 'MODERATE' ? '#F59E0B40' : '#94A3B840'}`
+                              }}>
+                                {msg.confidence} confidence
+                              </span>
+                            )}
+                          </>
                         : msg.content}
                     </div>
                     {/* Auto-Log Decision Button for AI messages with decisions */}
@@ -2335,15 +2356,18 @@ export default function App() {
                       body: JSON.stringify({ message: promptText, chiefContext })
                     });
                     const chiefData = await chiefRes.json();
-                    const chiefText = chiefData.text || 'I was unable to generate a response. Please try again.';
-                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText }]);
+                    const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
+                    const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
+                    const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
+                    const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf }]);
                   } catch (e) {
                     setChatMsgs(prev => {
                       const updated = [...prev];
                       if (updated.length > 0 && updated[updated.length - 1].role === "assistant" && !updated[updated.length - 1].content) {
-                        updated[updated.length - 1] = { role: "assistant", content: `Error: ${e.message}` };
+                        updated[updated.length - 1] = { role: "assistant", content: `Error: ${e.message}`, confidence: null };
                       } else {
-                        updated.push({ role: "assistant", content: `Error: ${e.message}` });
+                        updated.push({ role: "assistant", content: `Error: ${e.message}`, confidence: null });
                       }
                       return updated;
                     });
