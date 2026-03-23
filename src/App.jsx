@@ -1541,6 +1541,8 @@ export default function App() {
     r.start();
   };
 
+  const generateMsgId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
   const sendMessage = async () => {
     if (!chatInput.trim() && chatFiles.length === 0) return;
     if (streaming) return;
@@ -1564,7 +1566,7 @@ export default function App() {
       ? `${userMsg || "Analyse these files"}${attachedFileNames.map(n => `\n📎 ${n}`).join("")}`
       : userMsg;
 
-    const newMsgs = [...chatMsgs, { role: "user", content: displayContent }];
+    const newMsgs = [...chatMsgs, { role: "user", content: displayContent, msgId: generateMsgId() }];
     setChatMsgs(newMsgs);
     setChatFiles([]); // Clear attached files
     setStreaming(true);
@@ -1600,11 +1602,52 @@ export default function App() {
       const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
       const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
       const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf }]);
+      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
       setStreaming(false);
       return;
     } catch (e) {
-      setChatMsgs(prev => [...prev, { role: "assistant", content: `Error: ${e.message}`, confidence: null }]);
+      setChatMsgs(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: userMsg, msgId: generateMsgId() }]);
+    }
+    setStreaming(false);
+  };
+
+  const retryChiefMessage = async (targetMsgId, retryQuery) => {
+    if (streaming) return;
+    const snapshot = chatMsgs.filter(m => m.msgId !== targetMsgId);
+    setStreaming(true);
+    const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
+    const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
+    const totalExposureStr = totalExposureAmount > 0
+      ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
+      : null;
+    const chiefContext = parsedFindings.length > 0 ? {
+      findings: parsedFindings.slice(0, 3).map(f => ({
+        title: f.pattern || '',
+        severity: f.tier || '',
+        impact: f.impact || '',
+        evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
+        fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
+      })),
+      totalExposure: totalExposureStr,
+      scanType: scanMode,
+      domain: activeDomain,
+      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
+      dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
+    } : null;
+    try {
+      const chiefRes = await fetch('/api/chief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: retryQuery, chiefContext })
+      });
+      const chiefData = await chiefRes.json();
+      const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
+      const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
+      const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
+      const chiefText = chiefRaw.replace(/[-—–]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+      setChatMsgs([...snapshot, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
+    } catch (e) {
+      setChatMsgs([...snapshot, { role: 'assistant', content: 'Something went wrong. Please try again.', confidence: null, failed: true, retryQuery, msgId: generateMsgId() }]);
     }
     setStreaming(false);
   };
@@ -2251,6 +2294,26 @@ export default function App() {
                                 {msg.confidence} confidence
                               </span>
                             )}
+                            {msg.failed === true && (
+                              <div style={{ marginTop: 8 }}>
+                                <button
+                                  onClick={() => retryChiefMessage(msg.msgId, msg.retryQuery)}
+                                  style={{
+                                    padding: '4px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    background: '#F59E0B20',
+                                    border: '1px solid #F59E0B40',
+                                    borderRadius: 8,
+                                    color: '#F59E0B',
+                                    cursor: 'pointer',
+                                    fontFamily: "'DM Sans', sans-serif"
+                                  }}
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            )}
                           </>
                         : msg.content}
                     </div>
@@ -2327,7 +2390,7 @@ export default function App() {
                 const handleChipSend = async (promptText) => {
                   if (streaming) return;
                   setChatInput("");
-                  const newMsgs = [...chatMsgs, { role: "user", content: promptText }];
+                  const newMsgs = [...chatMsgs, { role: "user", content: promptText, msgId: generateMsgId() }];
                   setChatMsgs(newMsgs);
                   setStreaming(true);
                   try {
@@ -2360,14 +2423,14 @@ export default function App() {
                     const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
                     const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
                     const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf }]);
+                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
                   } catch (e) {
                     setChatMsgs(prev => {
                       const updated = [...prev];
                       if (updated.length > 0 && updated[updated.length - 1].role === "assistant" && !updated[updated.length - 1].content) {
-                        updated[updated.length - 1] = { role: "assistant", content: `Error: ${e.message}`, confidence: null };
+                        updated[updated.length - 1] = { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() };
                       } else {
-                        updated.push({ role: "assistant", content: `Error: ${e.message}`, confidence: null });
+                        updated.push({ role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() });
                       }
                       return updated;
                     });
