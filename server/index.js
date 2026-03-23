@@ -805,7 +805,15 @@ The RESPONSE: marker must appear on its own line. Everything before it is intern
     return res.status(200).json({ text });
   } catch (err) {
     console.error('[/api/chief error]', err.message);
-    return res.status(500).json({ error: err.message });
+    const isContextLengthError = err.message && (
+      err.message.includes('prompt is too long') ||
+      err.message.includes('maximum context length') ||
+      err.message.includes('too many tokens')
+    );
+    const safeError = isContextLengthError
+      ? 'This question contains too much context to process. Please try a shorter or more specific question.'
+      : err.message;
+    return res.status(500).json({ error: safeError });
   }
 });
 
