@@ -3237,14 +3237,6 @@ export default function App() {
                   </label>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <label style={labelStyle}>
-                      <span style={labelText}>Confidence</span>
-                      <select value={jf.confidence} onChange={e => setJf({...jf, confidence: e.target.value})} style={inputStyle}>
-                        <option value="high">HIGH</option>
-                        <option value="moderate">MODERATE</option>
-                        <option value="low">LOW</option>
-                      </select>
-                    </label>
-                    <label style={labelStyle}>
                       <span style={labelText}>Review In (days)</span>
                       <select value={jf.reviewDays} onChange={e => setJf({...jf, reviewDays: parseInt(e.target.value)})} style={inputStyle}>
                         <option value="7">7 days</option>
