@@ -781,7 +781,8 @@ After completing all four steps, output your final answer using this exact forma
 RESPONSE:
 [Your CEO-ready answer here]
 
-The RESPONSE: marker must appear on its own line. Everything before it is internal reasoning and will be stripped. Never include STEP labels in your final answer.`;
+The RESPONSE: marker must appear on its own line. Everything before it is internal reasoning and will be stripped. Never include STEP labels in your final answer.
+After your CEO-ready answer, you must always append one final standalone line in exactly this format: Confidence: HIGH — [one sentence explaining your evidence quality and certainty level]. Use MODERATE or LOW where appropriate. This line is mandatory. It must be the last line after RESPONSE:. Never omit it. Never embed it in a paragraph.`;
     const hasContext = chiefContext &&
       Array.isArray(chiefContext.findings) &&
       chiefContext.findings.length > 0;
