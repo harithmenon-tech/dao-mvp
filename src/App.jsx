@@ -217,6 +217,15 @@ const store = {
   }
 };
 
+// ── confidenceLabel — maps confidenceScore integer to display label ──
+function confidenceLabel(score) {
+  const s = Number(score);
+  if (s >= 4) return "HIGH";
+  if (s === 3) return "MODERATE";
+  if (s >= 1) return "LOW";
+  return "MODERATE";
+}
+
 // ── loadJournal — reads decision journal from localStorage ──────
 function loadJournal() {
   try {
@@ -2892,7 +2901,7 @@ export default function App() {
                               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, background: `${ACCENT}20`, color: ACCENT, borderRadius: 6, padding: "2px 7px" }}>Tier {d.tier}</span>
                                 <span style={{ fontSize: 11, fontWeight: 600, background: d.lifecycleStatus === "Active" ? `${GREEN}20` : `${AMBER}20`, color: d.lifecycleStatus === "Active" ? GREEN : AMBER, borderRadius: 6, padding: "2px 7px" }}>{d.lifecycleStatus}</span>
-                                <span style={{ fontSize: 11, color: TEXT_DIM }}>Confidence: {d.confidenceScore}/5</span>
+                                <span style={{ fontSize: 11, color: TEXT_DIM }}>Confidence: {confidenceLabel(d.confidenceScore)}</span>
                               </div>
                               <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 4 }}>{d.statement}</div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: d.review_date ? 4 : 0 }}>
@@ -3430,7 +3439,7 @@ export default function App() {
                       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: TEXT_DIM }}>
                         <span>{entry.date}</span>
                         <span>{entry.type}</span>
-                        <span>{entry.confidence === "high" ? "HIGH" : entry.confidence === "moderate" ? "MODERATE" : "LOW"}</span>
+                        <span>{confidenceLabel(entry.confidenceScore)}</span>
                         <span>Review: {entry.review_date}</span>
                         <span style={{ color: entry.status === "Reviewed" ? GREEN : entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
                           {entry.status}
