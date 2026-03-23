@@ -3405,7 +3405,7 @@ export default function App() {
                               <span style={{fontSize:'10px',background:'#2a2a5a',color:'#8888ff',
                                 border:'1px solid #4a4a8a',borderRadius:'4px',padding:'2px 6px',
                                 marginLeft:'8px',verticalAlign:'middle'}}>
-                                ⚡ Copilot Ready
+                                ⚡ DAO Chief Ready
                               </span>
                             )}
                           </h4>
@@ -3510,7 +3510,7 @@ export default function App() {
                         padding:'12px',marginBottom:'12px'}}>
                         <div style={{fontSize:'11px',color:'#8888bb',marginBottom:'6px',
                           textTransform:'uppercase',letterSpacing:'1px'}}>
-                          ⚡ Copilot Suggestion
+                          ⚡ DAO Chief Suggestion
                         </div>
                         <div style={{fontSize:'13px',color:'#e0e0ff',marginBottom:'4px'}}>
                           <strong>{copilotVariance.variance}</strong>
@@ -3537,7 +3537,7 @@ export default function App() {
                         ))}
                       </div>
                       {copilotVariance && copilotVariance.loading && (
-                        <p style={{color:'#888',fontSize:'0.85rem',marginTop:'8px'}}>Copilot is analysing...</p>
+                        <p style={{color:'#888',fontSize:'0.85rem',marginTop:'8px'}}>DAO Chief is analysing...</p>
                       )}
                     </div>
                     <label style={labelStyle}>

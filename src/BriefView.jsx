@@ -350,7 +350,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
 
       {copilotOpen && (
         <div style={{ marginTop: 16, marginBottom: 4 }}>
-          <SectionHead label="COPILOT OPTIONS" color={ACCENT} />
+          <SectionHead label="DAO CHIEF OPTIONS" color={ACCENT} />
           {copilotLoading ? (
             <p style={{ color: TEXT_DIM, fontSize: 13, margin: "8px 0" }}>Generating options…</p>
           ) : copilotResult?.error ? (
