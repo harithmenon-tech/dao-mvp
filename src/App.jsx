@@ -796,7 +796,7 @@ function HealthRing({ resolved, total }) {
   );
 }
 
-function FindingCard({ finding, resolved, onToggle }) {
+function FindingCard({ finding, resolved, onToggle, displayNumber }) {
   const [expanded, setExpanded] = useState(false);
   const tierColor = finding.tier === "1" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
   const tierLabel = finding.tier === "1" ? "TIER 1 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 3 — LOW";
@@ -814,7 +814,7 @@ function FindingCard({ finding, resolved, onToggle }) {
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>FINDING {finding.id}</span>
+          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>FINDING {displayNumber ?? finding.id}</span>
           <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${tierColor}20`, color: tierColor }}>{tierLabel}</span>
           {resolved && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#10B98120", color: "#10B981" }}>✓ RESOLVED</span>}
         </div>
@@ -3140,8 +3140,8 @@ export default function App() {
                               <span style={{ fontSize: 12, color: GREEN }}>{resolvedFindings.length} resolved</span>
                               <span style={{ fontSize: 12, color: RED }}>RM {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()} exposure</span>
                             </div>
-                            {[...parsedFindings].sort((a, b) => parseInt(a.tier) - parseInt(b.tier)).map(f => (
-                              <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding}/>
+                            {[...parsedFindings].sort((a, b) => parseInt(a.tier) - parseInt(b.tier)).map((f, idx) => (
+                              <FindingCard key={f.id} finding={f} resolved={resolvedFindings.includes(f.id)} onToggle={toggleResolvedFinding} displayNumber={idx + 1}/>
                             ))}
                           </div>
                         ) : (
