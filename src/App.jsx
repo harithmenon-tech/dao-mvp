@@ -1929,6 +1929,8 @@ export default function App() {
       line(`${profile.org}  |  ${profile.industry}  |  ${profile.region?.toUpperCase()}`, 8, false, [148, 163, 184]);
       gap(2);
       line(`Board Report  —  Generated ${new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" })}  —  ${profile.name}`, 8, false, [148, 163, 184]);
+      const generatedAt = new Date().toLocaleString("en-MY", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      line(`Generated at:  ${generatedAt}`, 8, false, [148, 163, 184]);
       gap(6);
       rule([14, 165, 233]);
       // Section 1: Command Centre
