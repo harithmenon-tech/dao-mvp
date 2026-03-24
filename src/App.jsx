@@ -1877,6 +1877,7 @@ export default function App() {
     savePatterns(refreshedPatterns);
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
+    setCopilotVariance({variance:null,confidence:null,reasoning:null,loading:false});
     setReviewForm({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
     setHumanOverrode(false);
   };
@@ -3499,35 +3500,6 @@ export default function App() {
                           <button onClick={() => {
                             setReviewModal(entry);
                             setReviewForm({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
-                            const activeDomain = localStorage.getItem('dao-active-domain') || '';
-                            const reviewDate = entry.review_date || entry.review_date || '';
-                            if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
-                              setCopilotVariance(prev => ({...prev, loading: true}));
-                              fetch('/api/variance', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({
-                                  decisionTitle: entry.text || entry.title || '',
-                                  context: entry.context || entry.evidence || '',
-                                  rationale: entry.rationale || entry.assumptions || '',
-                                  tier: entry.tier || 'Tier 1',
-                                  reviewNotes: '',
-                                  uploadedDataSummary: '',
-                                  activeDomain
-                                })
-                              })
-                              .then(r => r.json())
-                              .then(data => {
-                                setCopilotVariance({
-                                  variance: data.variance,
-                                  confidence: data.confidence,
-                                  reasoning: data.reasoning,
-                                  loading: false
-                                });
-                                console.log('[v1.3] Copilot variance loaded:', data);
-                              })
-                              .catch(() => setCopilotVariance({variance:null,confidence:null,reasoning:null,loading:false}));
-                            }
                           }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>📝 Review</button>
                         </div>
                       )}
@@ -3553,6 +3525,52 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                    {!copilotVariance.variance && !copilotVariance.loading && (
+                      <button
+                        onClick={() => {
+                          const activeDomain = localStorage.getItem('dao-active-domain') || '';
+                          setCopilotVariance(prev => ({...prev, loading: true}));
+                          fetch('/api/variance', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                              decisionTitle: reviewModal.statement || reviewModal.title || reviewModal.text || '',
+                              context: reviewModal.context || reviewModal.evidence || '',
+                              rationale: reviewModal.rationale || reviewModal.assumptions || '',
+                              tier: reviewModal.tier || 'Tier 1',
+                              reviewNotes: reviewForm.reviewNotes || '',
+                              uploadedDataSummary: '',
+                              activeDomain
+                            })
+                          })
+                          .then(r => r.json())
+                          .then(data => {
+                            setCopilotVariance({
+                              variance: data.variance,
+                              confidence: data.confidence,
+                              reasoning: data.reasoning,
+                              loading: false
+                            });
+                            console.log('[v1.3] Copilot variance loaded:', data);
+                          })
+                          .catch(() => setCopilotVariance({variance:null,confidence:null,reasoning:null,loading:false}));
+                        }}
+                        style={{
+                          marginTop: '12px',
+                          marginBottom: '8px',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid #4a4a8a',
+                          background: '#1a1a2e',
+                          color: '#8888ff',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          width: '100%'
+                        }}
+                      >
+                        Get DAO Chief Suggestion
+                      </button>
+                    )}
                     {copilotVariance && copilotVariance.variance && !copilotVariance.loading && (
                       <div style={{background:'#1a1a2e',border:'1px solid #4a4a8a',borderRadius:'8px',
                         padding:'12px',marginBottom:'12px'}}>
