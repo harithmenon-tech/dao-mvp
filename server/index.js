@@ -381,7 +381,7 @@ Identify risks for:
 1. Overdue Reviews: review_date is in the past and lifecycleStatus is not "Closed"
 2. Low Confidence on High-Tier: tier is "1" or "2" and confidenceScore <= 2
 3. Missing Evidence: tier is "1" or "2" and the decision has no evidence field
-4. Stale Status: lifecycleStatus is "Draft" or "Monitoring" for decisions (assume stale if status is Draft or Monitoring)
+4. Stale Status: lifecycleStatus is "Draft", "Pending", or "Monitoring" for decisions (assume stale if status is Draft, Pending, or Monitoring)
 
 Return a JSON array of risk objects with this exact schema:
 [

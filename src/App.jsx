@@ -3348,6 +3348,7 @@ export default function App() {
                     <select value={jf.lifecycleStatus} onChange={e => setJf({...jf, lifecycleStatus: e.target.value})} style={inputStyle}>
                       <option value="Active">Active</option>
                       <option value="Draft">Draft</option>
+                      <option value="Pending">Pending</option>
                       <option value="Monitoring">Monitoring</option>
                       <option value="Closed">Closed</option>
                     </select>
@@ -3470,8 +3471,8 @@ export default function App() {
                           {entry.lifecycleStatus && (
                             <span style={{
                               fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20,
-                              background: entry.lifecycleStatus === "Draft" ? "#94A3B820" : entry.lifecycleStatus === "Active" ? "#0EA5E920" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B20" : "#10B98120",
-                              color: entry.lifecycleStatus === "Draft" ? "#94A3B8" : entry.lifecycleStatus === "Active" ? "#0EA5E9" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B" : "#10B981"
+                              background: entry.lifecycleStatus === "Draft" ? "#94A3B820" : entry.lifecycleStatus === "Active" ? "#0EA5E920" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B20" : entry.lifecycleStatus === "Pending" ? "#A855F720" : "#10B98120",
+                              color: entry.lifecycleStatus === "Draft" ? "#94A3B8" : entry.lifecycleStatus === "Active" ? "#0EA5E9" : entry.lifecycleStatus === "Monitoring" ? "#F59E0B" : entry.lifecycleStatus === "Pending" ? "#A855F7" : "#10B981"
                             }}>{entry.lifecycleStatus}</span>
                           )}
                         </div>
@@ -3624,6 +3625,7 @@ export default function App() {
                         <option value="">— Select status (default after review: Monitoring) —</option>
                         <option value="Active">Active</option>
                         <option value="Draft">Draft</option>
+                        <option value="Pending">Pending</option>
                         <option value="Monitoring">Monitoring</option>
                         <option value="Closed">Closed</option>
                       </select>
