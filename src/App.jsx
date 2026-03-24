@@ -1954,7 +1954,7 @@ export default function App() {
         const totalRevPot = liveRevenueFindings.reduce((s, o) => s + o.maxAmount, 0);
         line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${liveRevenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
         gap(3);
-        liveRevenueFindings.slice(0, 4).forEach((o, i) => {
+        liveRevenueFindings.forEach((o, i) => {
           line(`${i + 1}.  [${o.category}]  ${stripMd(o.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
           if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${stripMd(o.timeframe?.split("(")[0].trim())}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
