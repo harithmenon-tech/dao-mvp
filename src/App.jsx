@@ -937,6 +937,7 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [micState, setMicState] = useState("idle"); // "idle" | "listening" | "error"
   const [streaming, setStreaming] = useState(false);
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [ob, setOb] = useState({ name: "", org: "", industry: "", region: "asean", style: "" });
   const chatEnd = useRef(null);
@@ -1606,7 +1607,7 @@ export default function App() {
       const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
       const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
       const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-      setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
+      setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
       setStreaming(false);
       return;
     } catch (e) {
@@ -2235,13 +2236,10 @@ export default function App() {
                   }}/>
                   {apiStatus === 'live' ? 'Chief Ready' : apiStatus === 'demo' ? 'Demo Mode' : 'Checking...'}
                 </div>
-                {/* Clear History button */}
-                {chatMsgs.length > 0 && (
+                {/* Clear History button / inline confirm */}
+                {chatMsgs.length > 0 && !confirmClearHistory && (
                   <button
-                    onClick={() => {
-                      setChatMsgs([]);
-                      localStorage.removeItem('dao-chief-history');
-                    }}
+                    onClick={() => setConfirmClearHistory(true)}
                     style={{
                       fontSize: 11,
                       color: TEXT_DIM,
@@ -2259,6 +2257,46 @@ export default function App() {
                   >
                     🗑 Clear History
                   </button>
+                )}
+                {confirmClearHistory && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'DM Sans', sans-serif" }}>Clear all history?</span>
+                    <button
+                      onClick={() => {
+                        setChatMsgs([]);
+                        localStorage.removeItem('dao-chief-history');
+                        store.del('dao-chat');
+                        setConfirmClearHistory(false);
+                      }}
+                      style={{
+                        fontSize: 11,
+                        color: RED,
+                        background: "none",
+                        border: `1px solid ${RED}60`,
+                        cursor: "pointer",
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        fontFamily: "'DM Sans', sans-serif"
+                      }}
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setConfirmClearHistory(false)}
+                      style={{
+                        fontSize: 11,
+                        color: TEXT_DIM,
+                        background: "none",
+                        border: `1px solid ${BORDER}`,
+                        cursor: "pointer",
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        fontFamily: "'DM Sans', sans-serif"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 )}
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 100px" }}>
@@ -2278,8 +2316,8 @@ export default function App() {
                     )}
                   </div>
                 )}
-                {chatMsgs.map((msg, i) => (
-                  <div key={i} style={{
+                {chatMsgs.map((msg) => (
+                  <div key={msg.msgId} style={{
                     display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start",
                     marginBottom: 16, maxWidth: "100%"
                   }}>
@@ -2443,17 +2481,9 @@ export default function App() {
                     const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
                     const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
                     const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-                    setChatMsgs([...newMsgs, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
+                    setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
                   } catch (e) {
-                    setChatMsgs(prev => {
-                      const updated = [...prev];
-                      if (updated.length > 0 && updated[updated.length - 1].role === "assistant" && !updated[updated.length - 1].content) {
-                        updated[updated.length - 1] = { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() };
-                      } else {
-                        updated.push({ role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() });
-                      }
-                      return updated;
-                    });
+                    setChatMsgs(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() }]);
                   }
                   setStreaming(false);
                 };
