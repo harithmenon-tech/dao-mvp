@@ -797,11 +797,12 @@ function HealthRing({ resolved, total }) {
 }
 
 function FindingCard({ finding, resolved, onToggle, displayNumber }) {
+  const FALLBACK = "Not quantified";
   const [expanded, setExpanded] = useState(false);
   const tierColor = finding.tier === "1" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
   const tierLabel = finding.tier === "1" ? "TIER 1 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 3 — LOW";
   const extractAmount = () => {
-    const m = finding.impact.match(/RM[\s]?[\d,\s]+(?:[–\-][\s]?RM?[\s]?[\d,]+)?/i);
+    const m = finding.impact && finding.impact.match(/RM[\s]?[\d,\s]+(?:[–\-][\s]?RM?[\s]?[\d,]+)?/i);
     return m ? m[0].trim() : finding.maxAmount > 0 ? `RM ${finding.maxAmount.toLocaleString()}` : null;
   };
   return (
@@ -826,26 +827,20 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
         }}>{resolved ? "✓ Resolved" : "Mark Resolved"}</button>
       </div>
       <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: "#E2E8F0" }}>{finding.pattern}</p>
-      {finding.maxAmount > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
           <div style={{ background: `${tierColor}10`, border: `1px solid ${tierColor}25`, borderRadius: 10, padding: "12px 14px" }}>
             <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>FINANCIAL EXPOSURE</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: tierColor }}>{extractAmount()}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: tierColor }}>{extractAmount() || FALLBACK}</div>
           </div>
-          {finding.dailyCost > 0 && (
-            <div style={{ background: "#EF444410", border: "1px solid #EF444425", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>COST PER DAY UNRESOLVED</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#EF4444" }}>RM {finding.dailyCost.toLocaleString()}</div>
-            </div>
-          )}
+          <div style={{ background: "#EF444410", border: "1px solid #EF444425", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4, fontWeight: 600 }}>COST PER DAY UNRESOLVED</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#EF4444" }}>{finding.dailyCost > 0 ? `RM ${finding.dailyCost.toLocaleString()}` : FALLBACK}</div>
+          </div>
         </div>
-      )}
-      {finding.fix && (
-        <div style={{ background: "#10B98110", border: "1px solid #10B98125", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+      <div style={{ background: "#10B98110", border: "1px solid #10B98125", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#10B981", marginBottom: 6 }}>RECOMMENDED ACTION</div>
-          <div style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.55 }}>{finding.fix}</div>
+          <div style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.55 }}>{finding.fix || FALLBACK}</div>
         </div>
-      )}
       <button onClick={() => setExpanded(!expanded)} style={{
         background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 12, padding: 0, display: "flex", alignItems: "center", gap: 4
       }}>{expanded ? "▲ Hide details" : "▼ Show evidence & root cause"}</button>
@@ -856,10 +851,10 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
             { label: "ROOT CAUSE", val: finding.rootCause },
             { label: "CONFIDENCE", val: finding.confidence },
             { label: "RECURRENCE", val: finding.recurrence }
-          ].filter(f => f.val).map(({ label, val }) => (
+          ].map(({ label, val }) => (
             <div key={label} style={{ background: "#1E293B", borderRadius: 8, padding: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#94A3B8", marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 12, color: "#E2E8F0", lineHeight: 1.5 }}>{val}</div>
+              <div style={{ fontSize: 12, color: "#E2E8F0", lineHeight: 1.5 }}>{val || FALLBACK}</div>
             </div>
           ))}
         </div>
