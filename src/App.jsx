@@ -1007,23 +1007,28 @@ export default function App() {
   const domainConfig = getDomain(activeDomain);
   console.log('[DAO] Active domain:', domainConfig.id, '(' + domainConfig.label + ')');
 
-  // Health check — determines if live API is available
+  // Health check — determines if live API is available; re-polls every 60 s
   useEffect(() => {
-    fetch("/api/health", { signal: AbortSignal.timeout(5000) })
-      .then(r => r.json())
-      .then(data => {
-        if (data.apiConfigured) {
-          DEMO_MODE = false;
-          setApiStatus("live");
-        } else {
+    const checkHealth = () => {
+      fetch("/api/health", { signal: AbortSignal.timeout(5000) })
+        .then(r => r.json())
+        .then(data => {
+          if (data.apiConfigured) {
+            DEMO_MODE = false;
+            setApiStatus("live");
+          } else {
+            DEMO_MODE = true;
+            setApiStatus("demo");
+          }
+        })
+        .catch(() => {
           DEMO_MODE = true;
           setApiStatus("demo");
-        }
-      })
-      .catch(() => {
-        DEMO_MODE = true;
-        setApiStatus("demo");
-      });
+        });
+    };
+    checkHealth();
+    const intervalId = setInterval(checkHealth, 60000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Load persisted state
