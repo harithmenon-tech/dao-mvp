@@ -1884,6 +1884,14 @@ export default function App() {
 
   const generateBoardReport = async () => {
     try {
+      // Task 3.7 — re-read all data from storage at PDF generation time (Flag 59)
+      const liveJournal = loadJournal();
+      const liveScanResult = store.get("dao-scan");
+      const liveParsedFindings = liveScanResult?.text ? parseFindings(liveScanResult.text) : [];
+      const liveRevenueScanResult = store.get("dao-revenue-scan");
+      const liveRevenueFindings = liveRevenueScanResult?.text ? parseRevenueFindings(liveRevenueScanResult.text) : [];
+      const liveResolvedFindings = store.get("dao-resolved-findings") || [];
+      const liveChangeProjects = store.get("dao-change-projects") || [];
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pw = 210;
@@ -1918,35 +1926,35 @@ export default function App() {
       // Section 1: Command Centre
       line("1.  COMMAND CENTRE SUMMARY", 11, true, [14, 165, 233]);
       gap(4);
-      const activeF = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
+      const activeF = liveParsedFindings.filter(f => !liveResolvedFindings.includes(f.id));
       const totalExp = activeF.reduce((s, f) => s + f.maxAmount, 0);
-      const overdue = journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length;
-      line(`Active Findings: ${activeF.length}   |   Resolved: ${resolvedFindings.length}   |   Financial Exposure: RM ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
+      const overdue = liveJournal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length;
+      line(`Active Findings: ${activeF.length}   |   Resolved: ${liveResolvedFindings.length}   |   Financial Exposure: RM ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
       gap(2);
-      line(`Decisions Logged: ${journal.length}   |   Overdue Reviews: ${overdue}   |   Revenue Opportunities: ${revenueFindings.length}`, 9, false, [226, 232, 240]);
+      line(`Decisions Logged: ${liveJournal.length}   |   Overdue Reviews: ${overdue}   |   Revenue Opportunities: ${liveRevenueFindings.length}`, 9, false, [226, 232, 240]);
       gap(6);
       rule();
       // Section 2: Top Operational Findings
-      if (parsedFindings.length > 0) {
+      if (liveParsedFindings.length > 0) {
         line("2.  TOP OPERATIONAL FINDINGS", 11, true, [14, 165, 233]);
         gap(4);
-        parsedFindings.slice(0, 5).forEach((f, i) => {
+        liveParsedFindings.slice(0, 5).forEach((f, i) => {
           line(`${i + 1}.  [TIER ${f.tier}]  ${stripMd(f.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
-          if (f.maxAmount > 0) { line(`     Exposure: RM ${f.maxAmount.toLocaleString()}  |  Daily cost: RM ${f.dailyCost.toLocaleString()}  |  ${resolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
+          if (f.maxAmount > 0) { line(`     Exposure: RM ${f.maxAmount.toLocaleString()}  |  Daily cost: RM ${f.dailyCost.toLocaleString()}  |  ${liveResolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
           if (f.fix) { line(`     Action: ${stripMd(f.fix).substring(0, 90)}`, 8, false, [148, 163, 184]); }
           gap(3);
         });
         rule();
       }
       // Section 3: Revenue Intelligence
-      if (revenueFindings.length > 0) {
+      if (liveRevenueFindings.length > 0) {
         line("3.  REVENUE OPPORTUNITIES", 11, true, [14, 165, 233]);
         gap(4);
-        const totalRevPot = revenueFindings.reduce((s, o) => s + o.maxAmount, 0);
-        line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${revenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
+        const totalRevPot = liveRevenueFindings.reduce((s, o) => s + o.maxAmount, 0);
+        line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${liveRevenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
         gap(3);
-        revenueFindings.slice(0, 4).forEach((o, i) => {
+        liveRevenueFindings.slice(0, 4).forEach((o, i) => {
           line(`${i + 1}.  [${o.category}]  ${stripMd(o.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
           if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${stripMd(o.timeframe?.split("(")[0].trim())}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
@@ -1958,10 +1966,10 @@ export default function App() {
       // Page 2 if needed
       if (y > 220) { doc.addPage(); doc.setFillColor(11, 17, 32); doc.rect(0, 0, 210, 297, "F"); y = 20; }
       // Section 4: Decisions
-      if (journal.length > 0) {
+      if (liveJournal.length > 0) {
         line("4.  RECENT DECISIONS", 11, true, [14, 165, 233]);
         gap(4);
-        journal.slice(0, 5).forEach((j, i) => {
+        liveJournal.slice(0, 5).forEach((j, i) => {
           line(`${i + 1}.  [TIER ${j.tier}  |  ${j.type}]  ${stripMd(j.statement)}`, 9, false, [226, 232, 240]);
           gap(1);
           line(`     Date: ${j.date}  |  Status: ${j.status}  |  Review by: ${j.review_date}`, 8, false, [148, 163, 184]);
@@ -1970,10 +1978,10 @@ export default function App() {
         rule();
       }
       // Section 5: Change Tracker
-      if (changeProjects.length > 0) {
+      if (liveChangeProjects.length > 0) {
         line("5.  IMPLEMENTATION PROGRESS", 11, true, [14, 165, 233]);
         gap(4);
-        changeProjects.forEach(p => {
+        liveChangeProjects.forEach(p => {
           const pct = Math.round(p.workstreams.reduce((s, w) => s + w.pct, 0) / p.workstreams.length);
           const atRisk = p.workstreams.filter(w => w.status === "At Risk").length;
           line(`${stripMd(p.name)}  —  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
