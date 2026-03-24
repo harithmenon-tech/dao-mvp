@@ -27,6 +27,7 @@ const GREEN = "#10B981";
 const AMBER = "#F59E0B";
 const RED = "#EF4444";
 const GOLD = "#F59E0B";
+const VERDICT_COLOR = { "On Track": GREEN, "Variance Noted": AMBER, "Off Track": RED, "Cancelled": TEXT_DIM };
 
 // Demo mode starts true (safe default). Gets flipped to false when API health check passes.
 let DEMO_MODE = true;
@@ -952,7 +953,7 @@ export default function App() {
   const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
   const [reviewTab, setReviewTab] = useState("all");
   const [reviewModal, setReviewModal] = useState(null);
-  const [reviewForm, setReviewForm] = useState({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
+  const [reviewForm, setReviewForm] = useState({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
@@ -1876,7 +1877,7 @@ export default function App() {
     savePatterns(refreshedPatterns);
     logAudit(profile.name, reviewModal.id, 'REVIEW', reviewModal.version ?? 1);
     setReviewModal(null);
-    setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
+    setReviewForm({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
     setHumanOverrode(false);
   };
 
@@ -3497,7 +3498,7 @@ export default function App() {
                         <div style={{ marginTop: 12 }}>
                           <button onClick={() => {
                             setReviewModal(entry);
-                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
+                            setReviewForm({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
                             const activeDomain = localStorage.getItem('dao-active-domain') || '';
                             const reviewDate = entry.review_date || entry.review_date || '';
                             if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
@@ -3544,9 +3545,9 @@ export default function App() {
                     <div style={{ marginBottom: 16 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM, display: "block", marginBottom: 8 }}>Verdict</span>
                       <div style={{ display: "flex", gap: 16 }}>
-                        {["Right", "Mixed", "Wrong"].map(v => (
-                          <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, fontWeight: reviewForm.verdict === v ? 700 : 400, color: reviewForm.verdict === v ? (v === "Right" ? GREEN : v === "Wrong" ? RED : AMBER) : TEXT_DIM }}>
-                            <input type="radio" name="verdict" value={v} checked={reviewForm.verdict === v} onChange={() => setReviewForm({...reviewForm, verdict: v})} style={{ accentColor: v === "Right" ? GREEN : v === "Wrong" ? RED : AMBER }}/>
+                        {["On Track", "Variance Noted", "Off Track", "Cancelled"].map(v => (
+                          <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, fontWeight: reviewForm.verdict === v ? 700 : 400, color: reviewForm.verdict === v ? (VERDICT_COLOR[v] ?? TEXT_DIM) : TEXT_DIM }}>
+                            <input type="radio" name="verdict" value={v} checked={reviewForm.verdict === v} onChange={() => setReviewForm({...reviewForm, verdict: v})} style={{ accentColor: VERDICT_COLOR[v] ?? TEXT_DIM }}/>
                             {v}
                           </label>
                         ))}
