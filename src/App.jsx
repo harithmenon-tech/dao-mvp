@@ -2316,7 +2316,7 @@ export default function App() {
                     )}
                   </div>
                 )}
-                {chatMsgs.map((msg) => (
+                {chatMsgs.map((msg, i) => (
                   <div key={msg.msgId} style={{
                     display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start",
                     marginBottom: 16, maxWidth: "100%"
