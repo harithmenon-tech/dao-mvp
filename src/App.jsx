@@ -3185,7 +3185,7 @@ export default function App() {
                             {[...revenueFindings].sort((a, b) => b.maxAmount - a.maxAmount).map(o => <RevenueCard key={o.id} opp={o}/>)}
                           </div>
                         ) : (
-                          <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 20, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{revenueScanResults.text}</div>
+                          <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${BORDER}`, padding: 20, fontSize: 14, color: TEXT_DIM }}>No revenue anomalies detected.</div>
                         )
                       ) : (
                         <div style={{ textAlign: "center", padding: "40px 20px", color: TEXT_DIM }}>
