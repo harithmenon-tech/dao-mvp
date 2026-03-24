@@ -2232,7 +2232,7 @@ export default function App() {
               {/* Chat sub-header: Chief Status + Clear History */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 16px", borderBottom: `1px solid ${BORDER}20` }}>
                 {/* Chief Status Indicator */}
-                <div style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 500, color: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : TEXT_DIM }}>
+                <div title={apiStatus === 'live' ? "Chief Ready: the AI assistant is connected and ready to support decision reviews." : undefined} style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 500, color: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : TEXT_DIM }}>
                   <span style={{
                     display: "inline-block",
                     width: 8,
@@ -2705,7 +2705,7 @@ export default function App() {
                 return (
                   <button onClick={() => setView("journal")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: BG_CARD, border: `1px solid ${due > 0 ? AMBER : GREEN}40`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", marginBottom: 16, textAlign: "left", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}>
                     <span style={{ fontSize: 12, color: TEXT_DIM }}>Reviews Due</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "✓ All clear"}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "✓ No reviews due"}</span>
                   </button>
                 );
               })()}
@@ -3451,7 +3451,7 @@ export default function App() {
                           <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: TEXT_DIM }}>{entry.id}</span>
                           <h4 style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}>{entry.statement}
                             {copilotReadyIds.includes(entry.id) && (
-                              <span style={{fontSize:'10px',background:'#2a2a5a',color:'#8888ff',
+                              <span title="DAO Chief Ready: the AI assistant has sufficient context on this assumption to support a decision review session." style={{fontSize:'10px',background:'#2a2a5a',color:'#8888ff',
                                 border:'1px solid #4a4a8a',borderRadius:'4px',padding:'2px 6px',
                                 marginLeft:'8px',verticalAlign:'middle'}}>
                                 ⚡ DAO Chief Ready
@@ -3481,7 +3481,7 @@ export default function App() {
                         <span>{entry.type}</span>
                         <span>{confidenceLabel(entry.confidenceScore)}</span>
                         <span>Review: {entry.review_date}</span>
-                        <span style={{ color: entry.status === "Reviewed" ? GREEN : entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
+                        <span title={entry.status === "Confirmed" ? "Confirmed: this assumption has been validated and logged. It still appears in the review queue until marked Reviewed." : undefined} style={{ color: entry.status === "Reviewed" ? GREEN : entry.status === "resolved" ? GREEN : entry.status === "in_progress" ? AMBER : TEXT_DIM }}>
                           {entry.status}
                         </span>
                       </div>
