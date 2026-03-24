@@ -1859,7 +1859,7 @@ export default function App() {
     const updated = journal.map(e => {
       if (e.id !== reviewModal.id) return e;
       const reviews = [...(e.reviews ?? []), reviewEntry];
-      const newLifecycleStatus = reviewForm.updateStatus || e.lifecycleStatus || "Active";
+      const newLifecycleStatus = reviewForm.updateStatus || "Monitoring";
       return { ...e, reviews, status: "Reviewed", lifecycleStatus: newLifecycleStatus, review_date: new Date().toISOString().split('T')[0] };
     });
     setJournal(updated);
@@ -2687,7 +2687,7 @@ export default function App() {
                   { label: "ACTIVE FINDINGS", value: parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length, color: parsedFindings.filter(f => !resolvedFindings.includes(f.id) && f.tier === "3").length > 0 ? "#EF4444" : "#F59E0B", sub: `${resolvedFindings.length} resolved` },
                   { label: "FINANCIAL EXPOSURE", value: `RM ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
                   { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "Confirmed").length} pending review` },
-                  { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length, color: "#F59E0B", sub: "need attention" }
+                  { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "Reviewed").length, color: "#F59E0B", sub: "need attention" }
                 ].map((stat, i) => (
                   <div key={i} style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16 }}>
                     <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>{stat.label}</div>
@@ -3462,7 +3462,7 @@ export default function App() {
                         <div style={{ marginTop: 12 }}>
                           <button onClick={() => {
                             setReviewModal(entry);
-                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: entry.lifecycleStatus || "Active" });
+                            setReviewForm({ verdict: "Right", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
                             const activeDomain = localStorage.getItem('dao-active-domain') || '';
                             const reviewDate = entry.review_date || entry.review_date || '';
                             if (reviewDate && reviewDate <= new Date().toISOString().split('T')[0]) {
@@ -3566,7 +3566,8 @@ export default function App() {
                     </label>
                     <label style={labelStyle}>
                       <span style={labelText}>Update Status</span>
-                      <select value={reviewForm.updateStatus || reviewModal?.lifecycleStatus || "Active"} onChange={e => setReviewForm({...reviewForm, updateStatus: e.target.value})} style={inputStyle}>
+                      <select value={reviewForm.updateStatus} onChange={e => setReviewForm({...reviewForm, updateStatus: e.target.value})} style={inputStyle}>
+                        <option value="">— Select status (default after review: Monitoring) —</option>
                         <option value="Active">Active</option>
                         <option value="Draft">Draft</option>
                         <option value="Monitoring">Monitoring</option>
