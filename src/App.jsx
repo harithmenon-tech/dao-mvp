@@ -950,7 +950,7 @@ export default function App() {
   const [rationaleLoading, setRationaleLoading] = useState(false);
   const [checkedFlags, setCheckedFlags] = useState([]);
   const [dalErrors, setDalErrors] = useState([]);
-  const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
+  const [jf, setJf] = useState({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(), reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
   const [reviewTab, setReviewTab] = useState("all");
   const [reviewModal, setReviewModal] = useState(null);
   const [reviewForm, setReviewForm] = useState({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
@@ -1783,7 +1783,7 @@ export default function App() {
     savePatterns(refreshedPatterns);
     logAudit(profile.name, entry.id, 'CREATE', 1);
     setShowJournalForm(false);
-    setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
+    setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(), reviewDays: 30, confidenceScore: 3, tagsRaw: "", lifecycleStatus: "Active" });
 
     // Theory of Mind: trigger Decision Profile after 10 entries
     if (updated.length >= 10 && !profileLoading) {
@@ -3397,7 +3397,7 @@ export default function App() {
                         {rationaleLoading ? "Saving…" : "Confirm"}
                       </button>
                       <button onClick={() => setChallengeOpen(false)} disabled={rationaleLoading} style={btnSmall}>Revise</button>
-                      <button onClick={() => { setChallengeOpen(false); setChallengePending(null); setCheckedFlags([]); setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: "", reviewDays: 30 }); }} disabled={rationaleLoading} style={{ ...btnSmall, color: RED }}>Defer</button>
+                      <button onClick={() => { setChallengeOpen(false); setChallengePending(null); setCheckedFlags([]); setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(), reviewDays: 30 }); }} disabled={rationaleLoading} style={{ ...btnSmall, color: RED }}>Defer</button>
                     </div>
                   </div>
                 </div>
