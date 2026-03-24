@@ -1874,6 +1874,14 @@ export default function App() {
     setHumanOverrode(false);
   };
 
+  function stripMd(str) {
+    if (!str) return "";
+    return str
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/#{1,6}\s*/g, "");
+  }
+
   const generateBoardReport = async () => {
     try {
       const { jsPDF } = await import("jspdf");
@@ -1923,10 +1931,10 @@ export default function App() {
         line("2.  TOP OPERATIONAL FINDINGS", 11, true, [14, 165, 233]);
         gap(4);
         parsedFindings.slice(0, 5).forEach((f, i) => {
-          line(`${i + 1}.  [TIER ${f.tier}]  ${f.pattern}`, 9, false, [226, 232, 240]);
+          line(`${i + 1}.  [TIER ${f.tier}]  ${stripMd(f.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
           if (f.maxAmount > 0) { line(`     Exposure: RM ${f.maxAmount.toLocaleString()}  |  Daily cost: RM ${f.dailyCost.toLocaleString()}  |  ${resolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
-          if (f.fix) { line(`     Action: ${f.fix.substring(0, 90)}`, 8, false, [148, 163, 184]); }
+          if (f.fix) { line(`     Action: ${stripMd(f.fix).substring(0, 90)}`, 8, false, [148, 163, 184]); }
           gap(3);
         });
         rule();
@@ -1939,10 +1947,10 @@ export default function App() {
         line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${revenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
         gap(3);
         revenueFindings.slice(0, 4).forEach((o, i) => {
-          line(`${i + 1}.  [${o.category}]  ${o.pattern}`, 9, false, [226, 232, 240]);
+          line(`${i + 1}.  [${o.category}]  ${stripMd(o.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
-          if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${o.timeframe?.split("(")[0].trim()}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
-          if (o.action) { line(`     Action: ${o.action.substring(0, 90)}`, 8, false, [148, 163, 184]); }
+          if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${stripMd(o.timeframe?.split("(")[0].trim())}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
+          if (o.action) { line(`     Action: ${stripMd(o.action).substring(0, 90)}`, 8, false, [148, 163, 184]); }
           gap(3);
         });
         rule();
@@ -1954,7 +1962,7 @@ export default function App() {
         line("4.  RECENT DECISIONS", 11, true, [14, 165, 233]);
         gap(4);
         journal.slice(0, 5).forEach((j, i) => {
-          line(`${i + 1}.  [TIER ${j.tier}  |  ${j.type}]  ${j.statement}`, 9, false, [226, 232, 240]);
+          line(`${i + 1}.  [TIER ${j.tier}  |  ${j.type}]  ${stripMd(j.statement)}`, 9, false, [226, 232, 240]);
           gap(1);
           line(`     Date: ${j.date}  |  Status: ${j.status}  |  Review by: ${j.review_date}`, 8, false, [148, 163, 184]);
           gap(3);
@@ -1968,10 +1976,10 @@ export default function App() {
         changeProjects.forEach(p => {
           const pct = Math.round(p.workstreams.reduce((s, w) => s + w.pct, 0) / p.workstreams.length);
           const atRisk = p.workstreams.filter(w => w.status === "At Risk").length;
-          line(`${p.name}  —  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
+          line(`${stripMd(p.name)}  —  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
           gap(2);
           p.workstreams.forEach(w => {
-            line(`     ${w.name}:  ${w.status}  (${w.pct}%)${w.note ? "  — " + w.note.substring(0, 50) : ""}`, 8, false, [148, 163, 184]);
+            line(`     ${w.name}:  ${w.status}  (${w.pct}%)${w.note ? "  — " + stripMd(w.note).substring(0, 50) : ""}`, 8, false, [148, 163, 184]);
             gap(1);
           });
           gap(4);
