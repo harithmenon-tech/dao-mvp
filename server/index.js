@@ -694,7 +694,7 @@ app.post('/api/scan', async (req, res) => {
           const retryFindingsForPatterns = Array.isArray(retryParsedForPatterns.findings) ? retryParsedForPatterns.findings : [];
           retryDerivedPatterns = derivePatterns(retryFindingsForPatterns);
         } catch { retryDerivedPatterns = []; }
-        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns });
+        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns, currency: detectedCurrency });
       } catch (retryErr) {
         console.error('[/api/scan] Retry threw:', retryErr.message);
         return res.status(422).json({ error: 'scan_output_invalid', text: raw });
@@ -706,7 +706,7 @@ app.post('/api/scan', async (req, res) => {
       const findingsForPatterns = Array.isArray(parsedForPatterns.findings) ? parsedForPatterns.findings : [];
       derivedPatterns = derivePatterns(findingsForPatterns);
     } catch { derivedPatterns = []; }
-    return res.status(200).json({ text: clean, patterns: derivedPatterns });
+    return res.status(200).json({ text: clean, patterns: derivedPatterns, currency: detectedCurrency });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
     return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });

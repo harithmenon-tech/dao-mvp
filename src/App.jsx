@@ -1412,7 +1412,7 @@ export default function App() {
           throw new Error('Scan could not produce a valid structured output. Please retry.');
         }
         const result = transformScanJsonToText(scanData.text || '');
-        setScanResults({ text: result, timestamp: new Date().toISOString() });
+        setScanResults({ text: result, timestamp: new Date().toISOString(), currency: scanData.currency || null });
         if (patterns.length === 0 && Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
           setPatterns(scanData.patterns.map(p => ({
             id: `${p.signal}-${p.value}`,
@@ -1895,6 +1895,7 @@ export default function App() {
       // Task 3.7 — re-read all data from storage at PDF generation time (Flag 59)
       const liveJournal = loadJournal();
       const liveScanResult = store.get("dao-scan");
+      const liveCurrency = liveScanResult?.currency || 'RM';
       const liveParsedFindings = liveScanResult?.text ? parseFindings(liveScanResult.text) : [];
       const liveRevenueScanResult = store.get("dao-revenue-scan");
       const liveRevenueFindings = liveRevenueScanResult?.text ? parseRevenueFindings(liveRevenueScanResult.text) : [];
@@ -1939,7 +1940,7 @@ export default function App() {
       const activeF = liveParsedFindings.filter(f => !liveResolvedFindings.includes(f.id));
       const totalExp = activeF.reduce((s, f) => s + f.maxAmount, 0);
       const overdue = liveJournal.filter(j => new Date(j.review_date) < new Date() && j.status !== "resolved").length;
-      line(`Active Findings: ${activeF.length}   |   Resolved: ${liveResolvedFindings.length}   |   Financial Exposure: RM ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
+      line(`Active Findings: ${activeF.length}   |   Resolved: ${liveResolvedFindings.length}   |   Financial Exposure: ${liveCurrency} ${totalExp.toLocaleString()}`, 9, false, [226, 232, 240]);
       gap(2);
       line(`Decisions Logged: ${liveJournal.length}   |   Overdue Reviews: ${overdue}   |   Revenue Opportunities: ${liveRevenueFindings.length}`, 9, false, [226, 232, 240]);
       gap(6);
@@ -1951,9 +1952,10 @@ export default function App() {
         liveParsedFindings.slice(0, 5).forEach((f, i) => {
           line(`${i + 1}.  [TIER ${f.tier}]  ${stripMd(f.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
-          if (f.maxAmount > 0) { line(`     Exposure: RM ${f.maxAmount.toLocaleString()}  |  Daily cost: RM ${f.dailyCost.toLocaleString()}  |  ${liveResolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
+          if (f.maxAmount > 0) { line(`     Exposure: ${liveCurrency} ${f.maxAmount.toLocaleString()}  |  Daily cost: ${liveCurrency} ${f.dailyCost.toLocaleString()}  |  ${liveResolvedFindings.includes(f.id) ? "RESOLVED" : "OPEN"}`, 8, false, [148, 163, 184]); gap(1); }
           if (f.fix) { line(`     Action: ${stripMd(f.fix).substring(0, 90)}`, 8, false, [148, 163, 184]); }
           gap(3);
+          if (f.evidence && f.evidence.trim().length > 0) { const evLines = doc.splitTextToSize(f.evidence, usable - 10); line(evLines, 8, false, [148, 163, 184]); gap(1); }
         });
         rule();
       }
