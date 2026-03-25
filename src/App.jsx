@@ -12,6 +12,7 @@ import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRout
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 import ShellFrame from './components/ShellFrame.jsx';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
+import DataConnection from './components/DataConnection.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -3780,34 +3781,8 @@ export default function App() {
                 />
               </div>
 
-              {/* Connected Sources */}
-              {datasets.length > 0 && (
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Connected ({datasets.length})</h3>
-                    <button onClick={() => { setDatasets([]); store.del("dao-datasets-meta"); }} style={{ ...btnSmall, color: RED, borderColor: `${RED}40` }}>Clear All</button>
-                  </div>
-                  {datasets.map((ds, i) => (
-                    <div key={i} style={{ background: BG_CARD, borderRadius: 10, border: `1px solid ${BORDER}`, padding: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 8, background: `${GREEN}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <FileIcon size={20} color={GREEN}/>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>{ds.name}</div>
-                        <div style={{ fontSize: 12, color: TEXT_DIM }}>
-                          {ds.type === "excel" ? `Excel • ${ds.sheetNames?.length || "?"} sheet(s) • ${ds.totalRows || "?"} rows` :
-                           ds.type === "csv" ? `CSV • ${ds.rowCount || "?"} rows • ${ds.headers?.length || "?"} columns` :
-                           `Text • ${(ds.charCount || 0).toLocaleString()} chars`}
-                        </div>
-                      </div>
-                      <CheckIcon size={18} color={GREEN}/>
-                    </div>
-                  ))}
-                  <button onClick={runScan} disabled={scanning} style={{ ...btnPrimary, width: "100%", marginTop: 16 }}>
-                    {scanning ? "Scanning..." : "Run Enterprise Scan"}
-                  </button>
-                </div>
-              )}
+              {/* DataConnection — T-S0.4 */}
+              <DataConnection runScan={runScan} scanning={scanning} />
 
               <div style={{
                 background: '#1a1a2e', border: '1px solid #3a3a5c',
