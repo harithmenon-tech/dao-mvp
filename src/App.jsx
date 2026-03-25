@@ -1021,7 +1021,6 @@ export default function App() {
   // Domain context — reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
   const domainConfig = getDomain(activeDomain);
-  console.log('[DAO] Active domain:', domainConfig.id, '(' + domainConfig.label + ')');
 
   // Health check — determines if live API is available; re-polls every 60 s
   useEffect(() => {
@@ -1118,6 +1117,10 @@ export default function App() {
 
   // Auto-scroll chat
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs, streaming]);
+  useEffect(() => {
+  const domainConfig = getDomain(activeDomain);
+  console.log('[DAO] Active domain:', domainConfig.id, '(' + domainConfig.label + ')');
+}, [activeDomain]);
 
   // Build system prompt
   const buildSystemPrompt = useCallback(() => {
