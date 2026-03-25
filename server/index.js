@@ -351,8 +351,10 @@ Generate a concise executive brief in this exact JSON format with no preamble or
   "generatedAt": "${new Date().toISOString()}"
 }
 Provide exactly 3 keyFindings and 3 recommendedActions. Return only valid JSON.`;
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
       system: 'You are a strategic executive advisor. Always respond with valid JSON only.',
       messages: [{ role: 'user', content: prompt }]
