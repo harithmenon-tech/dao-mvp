@@ -14,6 +14,7 @@ import ShellFrame from './components/ShellFrame.jsx';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
 import DataConnection from './components/DataConnection.jsx';
 import SituationQueue from './components/SituationQueue.jsx';
+import EmptyState from './components/EmptyState.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -3076,9 +3077,12 @@ export default function App() {
           )} />
 
           {/* ═══════ SCAN VIEW ═══════ */}
-            <Route path="/situations" element={(
-              <SituationQueue priorities={situationAssessment?.assessment?.priorities || []} />
-            )} />
+            <Route path="/situations" element={(() => {
+              const priorities = situationAssessment?.assessment?.priorities || [];
+              return priorities.length >= 2
+                ? <SituationQueue priorities={priorities} />
+                : <EmptyState dataConnected={datasets.length > 0} onScan={runScan} />;
+            })()} />
 
           {/* ═══════ JOURNAL VIEW ═══════ */}
             <Route path="/journal" element={(
