@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { upgradedDecision, validateDecision, bumpVersion, logAudit, saveJournal } from './dao-storage.js';
@@ -943,7 +944,8 @@ function PatternMemoryPanel({ patterns }) {
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("chat");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [sideOpen, setSideOpen] = useState(false);
   const [datasets, setDatasets] = useState([]);
   const [journal, setJournal] = useState([]);
@@ -1080,11 +1082,11 @@ export default function App() {
     localStorage.setItem('dao-active-domain', activeDomain);
   }, [activeDomain]);
   useEffect(() => {
-    if (view === "board") {
+    if (location.pathname === "/board") {
       setChatInput("Draft a board narrative for the current situation.");
-      setView("chat");
+      navigate("/chat", { replace: true });
     }
-  }, [view]);
+  }, [location.pathname]);
 
   const addChangeProject = () => {
     if (!cf.name) return;
@@ -1365,7 +1367,7 @@ export default function App() {
     }
     if (datasets.length === 0) return;
     setScanning(true);
-    setView("scan");
+    navigate("/situations");
     try {
     const routedDatasets = registry.length > 0
       ? getIncludedDatasets(scanMode === 'revenue' ? 'revenue' : 'operational', registry)
@@ -1757,7 +1759,7 @@ export default function App() {
     const extracted = extractDecisionFromConversation(msgIndex);
     setJf(extracted);
     setShowJournalForm(true);
-    setView("journal");
+    navigate("/journal");
   };
 
   // ═══════════ JOURNAL ═══════════
@@ -2151,6 +2153,15 @@ export default function App() {
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
   ];
 
+  const navRouteMap = {
+    dashboard: "/dashboard",
+    chat: "/chat",
+    scan: "/situations",
+    journal: "/journal",
+    track: "/track",
+    data: "/connect"
+  };
+
   // ═══════════ MAIN LAYOUT ═══════════
   return (
     <div style={{ background: BG_DARK, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: TEXT, display: "flex", flexDirection: "column" }}>
@@ -2210,14 +2221,14 @@ export default function App() {
           </button>
           <div style={{ flex: 1 }}>
             {navItems.map(item => (
-              <button key={item.id} onClick={() => { setView(item.id); setSideOpen(false); }} style={{
+              <button key={item.id} onClick={() => { navigate(navRouteMap[item.id] || ("/" + item.id)); setSideOpen(false); }} style={{
                 display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px",
-                background: view === item.id ? `${ACCENT}15` : "transparent",
-                border: `1px solid ${view === item.id ? `${ACCENT}40` : "transparent"}`,
-                borderRadius: 10, cursor: "pointer", color: view === item.id ? ACCENT : TEXT_DIM,
+                background: location.pathname === navRouteMap[item.id] ? `${ACCENT}15` : "transparent",
+                border: `1px solid ${location.pathname === navRouteMap[item.id] ? `${ACCENT}40` : "transparent"}`,
+                borderRadius: 10, cursor: "pointer", color: location.pathname === navRouteMap[item.id] ? ACCENT : TEXT_DIM,
                 marginBottom: 4, transition: "all 0.2s", fontSize: 14, fontWeight: 500
               }}>
-                <item.icon size={18} color={view === item.id ? ACCENT : TEXT_DIM}/>
+                <item.icon size={18} color={location.pathname === navRouteMap[item.id] ? ACCENT : TEXT_DIM}/>
                 {item.label}
                 {item.badge && <span style={{ marginLeft: "auto", background: `${ACCENT}20`, color: ACCENT, borderRadius: 10, padding: "2px 8px", fontSize: 12 }}>{item.badge}</span>}
               </button>
@@ -2253,9 +2264,12 @@ export default function App() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/board" element={<Navigate to="/chat" replace />} />
 
           {/* ═══════ CHAT VIEW ═══════ */}
-          {view === "chat" && (
+            <Route path="/chat" element={(
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               {/* Chat sub-header: Chief Status + Clear History */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 16px", borderBottom: `1px solid ${BORDER}20` }}>
@@ -2611,10 +2625,10 @@ export default function App() {
                 </div>
               </div>
             </div>
-          )}
+          )} />
 
           {/* ═══════ DASHBOARD VIEW ═══════ */}
-          {view === "dashboard" && (
+            <Route path="/dashboard" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
 
               <div style={{
@@ -2688,7 +2702,7 @@ export default function App() {
                   </button>
                   {autoBrief && (
                     <button
-                      onClick={() => setActiveTab('brief')}
+                      onClick={() => navigate("/brief")}
                       style={{
                         background: 'transparent', color: '#805ad5',
                         border: '1px solid #553c9a', borderRadius: 6,
@@ -2705,10 +2719,10 @@ export default function App() {
               <div style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 14, padding: "20px 16px", marginBottom: 14 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", color: TEXT }}>Decision Intelligence, Activated.</h2>
                 <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 14px" }}>Surface your top risks, opportunities, and decisions in 60 seconds.</p>
-                <button onClick={() => setView("brief")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                <button onClick={() => navigate("/brief")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
                   ⚡ Generate 60-second Brief
                 </button>
-                <button onClick={() => setView("chat")} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", marginTop: 10, padding: 0, fontFamily: "'DM Sans', sans-serif", display: "block", width: "100%", textAlign: "center" }}>
+                <button onClick={() => navigate("/chat")} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", marginTop: 10, padding: 0, fontFamily: "'DM Sans', sans-serif", display: "block", width: "100%", textAlign: "center" }}>
                   💬 Discuss with AI
                 </button>
               </div>
@@ -2731,7 +2745,7 @@ export default function App() {
                 const today = new Date().toISOString().split("T")[0];
                 const due = journal.filter(e => e.review_date && e.review_date <= today && e.status !== "Reviewed").length;
                 return (
-                  <button onClick={() => setView("journal")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: BG_CARD, border: `1px solid ${due > 0 ? AMBER : GREEN}40`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", marginBottom: 16, textAlign: "left", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}>
+                  <button onClick={() => navigate("/journal")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: BG_CARD, border: `1px solid ${due > 0 ? AMBER : GREEN}40`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", marginBottom: 16, textAlign: "left", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}>
                     <span style={{ fontSize: 12, color: TEXT_DIM }}>Reviews Due</span>
                     <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "✓ No reviews due"}</span>
                   </button>
@@ -2775,7 +2789,7 @@ export default function App() {
                         <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", marginBottom: 2, lineHeight: 1.3 }}>{f.pattern}</div>
                         {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>RM {f.dailyCost.toLocaleString()} / day</div>}
                       </div>
-                      <button onClick={() => setView("scan")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View →</button>
+                      <button onClick={() => navigate("/situations")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View →</button>
                     </div>
                   ))}
                   {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length === 0 && (
@@ -2789,7 +2803,7 @@ export default function App() {
                 <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "#0EA5E9" }}>RECENT DECISIONS</div>
-                    <button onClick={() => setView("journal")} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 11 }}>View all →</button>
+                    <button onClick={() => navigate("/journal")} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 11 }}>View all →</button>
                   </div>
                   {journal.slice(0, 3).map((entry, i) => (
                     <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, marginBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, borderBottom: i < Math.min(journal.length, 3) - 1 ? "1px solid #1E3A5F" : "none" }}>
@@ -2805,7 +2819,7 @@ export default function App() {
                   <div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div>
                   <h3 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: "#E2E8F0" }}>Start Your First Scan</h3>
                   <p style={{ color: "#94A3B8", fontSize: 13, margin: "0 0 16px" }}>Upload operational data to see findings, financial exposure, and priorities here.</p>
-                  <button onClick={() => setView("data")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data →</button>
+                  <button onClick={() => navigate("/connect")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data →</button>
                 </div>
               )}
               {/* ── Decision Health widget ── */}
@@ -2859,7 +2873,7 @@ export default function App() {
                           </div>
                           {(result.status === 'Watch' || result.status === 'At Risk') && (
                             <button
-                              onClick={() => setView('journal')}
+                              onClick={() => navigate("/journal")}
                               style={{marginLeft:'12px',padding:'4px 10px',fontSize:'11px',
                                 background:'#2a2a5a',color:'#8888ff',border:'1px solid #4a4a8a',
                                 borderRadius:'6px',cursor:'pointer',whiteSpace:'nowrap'}}>
@@ -3042,17 +3056,17 @@ export default function App() {
               </div>
 
             </div>
-          )}
+          )} />
 
           {/* ═══════ SCAN VIEW ═══════ */}
-          {view === "scan" && (
+            <Route path="/situations" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               {datasets.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
                   <ScanIcon size={48} color={TEXT_DIM}/>
                   <h2 style={{ fontSize: 20, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Data Connected</h2>
                   <p style={{ fontSize: 14 }}>Upload files in the Data tab to run a scan.</p>
-                  <button onClick={() => setView("data")} style={{ ...btnPrimary, marginTop: 16 }}>Go to Data</button>
+                  <button onClick={() => navigate("/connect")} style={{ ...btnPrimary, marginTop: 16 }}>Go to Data</button>
                 </div>
               ) : (
                 <div>
@@ -3072,7 +3086,7 @@ export default function App() {
                             <span style={{ color: GOLD, flexShrink: 0 }}>›</span><span>{item}</span>
                           </div>
                         ))}
-                        <button onClick={() => setView("data")} style={{ marginTop: 10, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 600, color: GOLD, cursor: "pointer" }}>+ Upload Data</button>
+                        <button onClick={() => navigate("/connect")} style={{ marginTop: 10, background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 600, color: GOLD, cursor: "pointer" }}>+ Upload Data</button>
                       </div>
                     );
                   })()}
@@ -3265,10 +3279,10 @@ export default function App() {
                 </div>
               )}
             </div>
-          )}
+          )} />
 
           {/* ═══════ JOURNAL VIEW ═══════ */}
-          {view === "journal" && (
+            <Route path="/journal" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Decision Ledger</h2>
@@ -3670,10 +3684,10 @@ export default function App() {
                 </div>
               )}
             </div>
-          )}
+          )} />
 
           {/* ═══════ CHANGE TRACKER VIEW ═══════ */}
-          {view === "track" && (
+            <Route path="/track" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <div>
@@ -3712,19 +3726,22 @@ export default function App() {
                 ))
               )}
             </div>
-          )}
+          )} />
 
-          {/* ═══════ DATA VIEW ═══════ */}
-          {view === "brief" && (
+          {/* ═══════ BRIEF VIEW ═══════ */}
+            <Route path="/brief" element={(
             <BriefView
               profile={profile}
-              onBack={() => setView("dashboard")}
-              onChat={() => setView("chat")}
-              onNavigate={(v) => setView(v)}
+              onBack={() => navigate("/dashboard")}
+              onChat={() => navigate("/chat")}
+              onNavigate={(v) => {
+                const onNavMap = { dashboard: "/dashboard", chat: "/chat", scan: "/situations", journal: "/journal", track: "/track", data: "/connect", brief: "/brief", board: "/board" };
+                navigate(onNavMap[v] || ("/" + v));
+              }}
             />
-          )}
+          )} />
 
-          {view === "data" && (
+            <Route path="/connect" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <h2 style={{ fontSize: 20, fontWeight: 600, marginTop: 0, marginBottom: 16 }}>Data Sources</h2>
 
@@ -3814,42 +3831,13 @@ export default function App() {
                 ))}
               </div>
             </div>
-          )}
+          )} />
+
+            <Route path="/situation/:id/step/:n" element={<div style={{ padding: 16, color: "#E2E8F0" }}>Situation step — coming soon.</div>} />
+          </Routes>
         </main>
       </div>
 
-      {/* BOTTOM NAV */}
-      <nav style={{
-        position: "sticky", bottom: 0, background: BG_CARD, borderTop: `1px solid ${BORDER}`,
-        display: view === "chat" ? "none" : "flex", justifyContent: "space-around", padding: "8px 0", zIndex: 30
-      }}>
-        {navItems.map(item => (
-          <button key={item.id} onClick={() => setView(item.id)} style={{
-            background: "none", border: "none", cursor: "pointer", color: view === item.id ? ACCENT : TEXT_DIM,
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 500, padding: "4px 12px"
-          }}>
-            <item.icon size={20} color={view === item.id ? ACCENT : TEXT_DIM}/>
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      {view === "chat" && (
-        <nav style={{
-          position: "fixed", bottom: 64, left: 0, right: 0,
-          display: "flex", justifyContent: "center", gap: 4, padding: "0 16px", zIndex: 25
-        }}>
-          {navItems.filter(n => n.id !== "chat").map(item => (
-            <button key={item.id} onClick={() => setView(item.id)} style={{
-              background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 20,
-              cursor: "pointer", color: TEXT_DIM, display: "flex", alignItems: "center", gap: 4,
-              fontSize: 11, fontWeight: 500, padding: "6px 12px"
-            }}>
-              <item.icon size={14} color={TEXT_DIM}/> {item.label}
-              {item.badge && <span style={{ background: `${ACCENT}20`, color: ACCENT, borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>{item.badge}</span>}
-            </button>
-          ))}
-        </nav>
-      )}
     </div>
   );
 }
