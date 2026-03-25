@@ -11,6 +11,7 @@ import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDa
 import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 import ShellFrame from './components/ShellFrame.jsx';
+import WelcomeScreen from './components/WelcomeScreen.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -989,6 +990,18 @@ export default function App() {
   const [cf, setCf] = useState({ name: "", description: "" });
   const [copilotVariance, setCopilotVariance] = useState({variance:null,confidence:null,reasoning:null,loading:false});
   const [copilotReadyIds, setCopilotReadyIds] = useState([]);
+  // ── dao-situations parse (T-S0.3) ──────────────────────────────
+  const rawSituations = (() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('dao-situations'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+  const situationCount = rawSituations.length;
+  const singleSituationId = situationCount === 1 ? (rawSituations[0]?.id ?? null) : null;
+  // ────────────────────────────────────────────────────────────────
   const [decisionHealth, setDecisionHealth] = useState(null);
   const [healthExpanded, setHealthExpanded] = useState(false);
   const [humanOverrode, setHumanOverrode] = useState(false);
@@ -2267,7 +2280,7 @@ export default function App() {
         <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <ShellFrame domainLabel={domainConfig.label} situationTitle="">
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
             <Route path="/board" element={<Navigate to="/chat" replace />} />
 
           {/* ═══════ CHAT VIEW ═══════ */}
