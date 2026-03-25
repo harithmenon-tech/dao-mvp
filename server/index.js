@@ -302,8 +302,10 @@ Respond in this exact JSON format with no preamble or markdown:
   "chiefQuestion": "The single most important question the CEO should be asking right now"
 }
 Provide exactly 3 priorities. Return only valid JSON.`;
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       system: 'You are a strategic business advisor. Always respond with valid JSON only.',
       messages: [{ role: 'user', content: prompt }]
