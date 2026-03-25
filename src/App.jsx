@@ -10,6 +10,7 @@ import { getScanOverlay } from './domain/domainContextInjector.js';
 import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDatasetRegistry } from './core/data/datasetRegistry.js';
 import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
+import ShellFrame from './components/ShellFrame.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // DECISION ACCOUNTABILITY OS — MVP
@@ -2264,6 +2265,7 @@ export default function App() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <ShellFrame domainLabel={domainConfig.label} situationTitle="">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/board" element={<Navigate to="/chat" replace />} />
@@ -3835,6 +3837,7 @@ export default function App() {
 
             <Route path="/situation/:id/step/:n" element={<div style={{ padding: 16, color: "#E2E8F0" }}>Situation step — coming soon.</div>} />
           </Routes>
+          </ShellFrame>
         </main>
       </div>
 

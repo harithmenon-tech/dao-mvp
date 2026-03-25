@@ -1,0 +1,24 @@
+:root {
+  /* Shell strip */
+  --shell-strip-height: 52px;
+
+  /* Colour palette */
+  --color-bg-dark: #0B1120;
+  --color-bg-card: #111827;
+  --color-bg-surface: #1E293B;
+  --color-border: #1E3A5F;
+  --color-accent: #0EA5E9;
+  --color-accent-dim: #0284C7;
+  --color-text: #E2E8F0;
+  --color-text-dim: #94A3B8;
+
+  /* Progress bar */
+  --shell-progress-height: 3px;
+  --shell-progress-track: #1E3A5F;
+  --shell-progress-fill: #0EA5E9;
+
+  /* Typography */
+  --shell-font-domain: 11px;
+  --shell-font-step: 12px;
+  --shell-font-weight-label: 600;
+}
