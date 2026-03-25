@@ -72,7 +72,8 @@ function createDatasetRecord(file, parsedData) {
  * @returns {"revenue"|"operational"|"compliance"|"unclassified"}
  */
 function classifySuggestDomain(record) {
-  const revenueKeywords = ['revenue', 'sales', 'price', 'invoice', 'payment', 'billing', 'tariff', 'charges', 'receivable', 'arrears', 'collection'];
+  const sharedKeywords   = ['billing', 'tariff'];
+  const revenueKeywords = ['revenue', 'sales', 'price', 'invoice', 'payment', 'charges', 'receivable', 'arrears', 'collection'];
   const operationalKeywords = ['maintenance', 'operations', 'incident', 'fault', 'downtime', 'reading', 'turbidity', 'treatment', 'pressure', 'leakage', 'nrw', 'interruption', 'consumption', 'reservoir', 'pump'];
   const complianceKeywords = ['contract', 'compliance', 'audit'];
 
@@ -90,6 +91,7 @@ function classifySuggestDomain(record) {
     });
   }
 
+  if (anyMatch(sharedKeywords))  return 'shared';
   if (anyMatch(revenueKeywords)) return 'revenue';
   if (anyMatch(operationalKeywords)) return 'operational';
   if (anyMatch(complianceKeywords)) return 'compliance';

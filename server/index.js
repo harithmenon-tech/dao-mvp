@@ -597,7 +597,14 @@ function derivePatterns(findings) {
     }
     for (const [cause, group] of Object.entries(byCause)) {
       if (group.length >= 2) {
-        patterns.push({ signal: 'rootCause', value: cause, count: group.length });
+        patterns.push({
+          signal: 'rootCause',
+          value: cause,
+          count: group.length,
+          evidence: (`${group.length} findings share root cause '${cause}': ` + (group[0].evidence || group[0].title || 'see findings')).slice(0, 300),
+          trendDirection: group[0].recurrence || 'Recurring — see findings',
+          action: group[0].fix || 'Review grouped findings and apply fixes',
+        });
       }
     }
 

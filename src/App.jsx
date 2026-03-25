@@ -903,6 +903,21 @@ function PatternMemoryPanel({ patterns }) {
                   {p.avgConfidence > 0 && <span>Avg confidence: {p.avgConfidence}</span>}
                   <span>Last seen: {new Date(p.lastSeen).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
+                {p.evidence && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                    <span style={{ color: "#8888bb", fontWeight: 600 }}>Evidence: </span>{p.evidence}
+                  </div>
+                )}
+                {p.trendDirection && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                    <span style={{ color: "#8888bb", fontWeight: 600 }}>Trend: </span>{p.trendDirection}
+                  </div>
+                )}
+                {p.action && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                    <span style={{ color: "#8888bb", fontWeight: 600 }}>Action: </span>{p.action}
+                  </div>
+                )}
                 {p.tags.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {p.tags.map(t => (
@@ -1378,7 +1393,7 @@ export default function App() {
         }
         const result = transformScanJsonToText(scanData.text || '');
         setRevenueScanResults({ text: result, timestamp: new Date().toISOString(), industry: profile.industry });
-        if (patterns.length === 0 && Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
+        if (Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
           setPatterns(scanData.patterns.map(p => ({
             id: `${p.signal}-${p.value}`,
             label: `${p.signal}: ${p.value} (×${p.count})`,
@@ -1386,6 +1401,9 @@ export default function App() {
             tags: [],
             avgConfidence: 0,
             lastSeen: new Date().toISOString(),
+            evidence: p.evidence || '',
+            trendDirection: p.trendDirection || '',
+            action: p.action || '',
           })));
         }
         saveScanRecord(
@@ -1413,7 +1431,7 @@ export default function App() {
         }
         const result = transformScanJsonToText(scanData.text || '');
         setScanResults({ text: result, timestamp: new Date().toISOString(), currency: scanData.currency || null });
-        if (patterns.length === 0 && Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
+        if (Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
           setPatterns(scanData.patterns.map(p => ({
             id: `${p.signal}-${p.value}`,
             label: `${p.signal}: ${p.value} (×${p.count})`,
@@ -1421,6 +1439,9 @@ export default function App() {
             tags: [],
             avgConfidence: 0,
             lastSeen: new Date().toISOString(),
+            evidence: p.evidence || '',
+            trendDirection: p.trendDirection || '',
+            action: p.action || '',
           })));
         }
         saveScanRecord(
