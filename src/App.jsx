@@ -1133,7 +1133,31 @@ export default function App() {
     setResolvedFindings(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  useEffect(() => { if (datasets.length) store.set("dao-datasets-meta", datasets.map(d => ({ name: d.name, type: d.type, rowCount: d.totalRows || d.rowCount || 0 }))); }, [datasets]);
+  useEffect(() => {
+    if (datasets.length) store.set("dao-datasets-meta",
+      datasets.map(d => {
+        if (d.type === 'excel') {
+          return {
+            name: d.name,
+            type: d.type,
+            rowCount: d.totalRows || d.rowCount || 0,
+            sheetNames: d.sheetNames || [],
+            sheets: d.sheets || {}
+          };
+        }
+        if (d.type === 'csv') {
+          return {
+            name: d.name,
+            type: d.type,
+            rowCount: d.rowCount || 0,
+            headers: d.headers || [],
+            rows: d.rows || []
+          };
+        }
+        return { name: d.name, type: d.type, rowCount: d.totalRows || d.rowCount || 0 };
+      })
+    );
+  }, [datasets]);
 
   // Auto-scroll chat
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs, streaming]);
