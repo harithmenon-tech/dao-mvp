@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from "react-router-dom";
 import * as Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -17,10 +17,10 @@ import DataConnection from './components/DataConnection.jsx';
 import SituationQueue from './components/SituationQueue.jsx';
 import EmptyState from './components/EmptyState.jsx';
 
-// ═══════════════════════════════════════════════════════════════
-// DECISION ACCOUNTABILITY OS — MVP
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// DECISION ACCOUNTABILITY OS â MVP
 // Built by 30GENS | Powered by Claude API
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const ACCENT = "#0EA5E9";
 const ACCENT_DIM = "#0284C7";
@@ -56,7 +56,7 @@ ABSOLUTE RULES:
 - When you identify a finding, quantify the financial impact in specific currency amounts, not percentages.
 - Present confidence as HIGH, MODERATE, or LOW with one-line reasoning.`;
 
-const DIAGNOSTIC_CHAIN = `DIAGNOSTIC REASONING CHAIN — Apply to EVERY substantive question:
+const DIAGNOSTIC_CHAIN = `DIAGNOSTIC REASONING CHAIN â Apply to EVERY substantive question:
 
 STEP 1 - DATA TRUTH:
 - Which connected data sources are relevant?
@@ -92,7 +92,7 @@ For each dataset, scan for these 5 pattern categories:
 4. RECURRING FAILURES: Same incident type repeating (>3 times in 90 days)
 5. DECISION STALLS: Decisions revisited without resolution (>3 discussions, no action)
 
-CRITICAL — CROSS-DATASET CORRELATION:
+CRITICAL â CROSS-DATASET CORRELATION:
 For each finding in one dataset, check ALL other datasets for correlating patterns.
 If correlation found: present as SINGLE narrative with COMBINED impact.
 
@@ -105,7 +105,7 @@ IMPACT: [financial + time + risk, quantified]
 ROOT CAUSE: [process / people / system / governance]
 FIX: [specific corrective action]
 SEVERITY: [Tier 1 / Tier 2 / Tier 3]
-CONFIDENCE: [HIGH / MODERATE / LOW] — [one-line reasoning]
+CONFIDENCE: [HIGH / MODERATE / LOW] â [one-line reasoning]
 ASSUMPTIONS: [list, flagged as data-backed or inferred]
 
 After all findings, provide:
@@ -117,44 +117,44 @@ SCAN SUMMARY
 
 const INDUSTRY_UPLOAD_GUIDANCE = {
   "Biotech": {
-    title: "Biotech — Revenue Intelligence Data",
+    title: "Biotech â Revenue Intelligence Data",
     items: ["Clinical outcome datasets (anonymised)", "Doctor interaction logs or CRM exports", "Research partnership agreements", "Product pricing history and discount records", "Regulatory approval timelines and cost records", "Competitor pricing benchmarks if available"]
   },
   "Healthcare": {
-    title: "Healthcare — Revenue Intelligence Data",
+    title: "Healthcare â Revenue Intelligence Data",
     items: ["Patient pathway and service utilisation data", "Referral source and conversion records", "Pricing schedules and insurance reimbursement rates", "Unutilised equipment or facility capacity reports", "Staff skill and certification records", "Partnership or supplier contracts"]
   },
   "Construction": {
-    title: "Construction — Revenue Intelligence Data",
+    title: "Construction â Revenue Intelligence Data",
     items: ["Project cost vs budget variance history", "Subcontractor performance and payment records", "Material procurement and waste logs", "Delay and variation order history", "Client satisfaction or defect liability records", "Equipment utilisation and idle time reports"]
   },
   "Manufacturing": {
-    title: "Manufacturing — Revenue Intelligence Data",
+    title: "Manufacturing â Revenue Intelligence Data",
     items: ["Production yield and defect rate history", "Machine utilisation and downtime logs", "Raw material cost and supplier performance data", "Customer order patterns and demand forecasts", "Warranty claim and return records", "Excess inventory and obsolescence reports"]
   },
   "Transport": {
-    title: "Supply Chain — Revenue Intelligence Data",
+    title: "Supply Chain â Revenue Intelligence Data",
     items: ["Supplier lead time and reliability records", "Inventory turnover and stockout history", "Freight cost and carrier performance data", "Order fulfilment cycle time reports", "Returns and reverse logistics data", "Customer delivery SLA compliance records"]
   },
   "Property": {
-    title: "Property Development — Revenue Intelligence Data",
+    title: "Property Development â Revenue Intelligence Data",
     items: ["Project sales velocity and pricing by unit type", "Buyer profile and source-of-buyer data", "Construction cost vs sales price margin history", "Unsold inventory aging reports", "Rental yield data for completed projects", "Agent commission and channel performance records"]
   },
   "Financial": {
-    title: "Financial Services — Revenue Intelligence Data",
+    title: "Financial Services â Revenue Intelligence Data",
     items: ["Product cross-sell and upsell conversion records", "Client lifetime value and churn history", "Fee schedule and discount approval logs", "Dormant account or underutilised product data", "Relationship manager activity and portfolio reports", "Competitor product benchmarks if available"]
   },
   "Technology": {
-    title: "Technology — Revenue Intelligence Data",
+    title: "Technology â Revenue Intelligence Data",
     items: ["Product usage and feature adoption logs", "Customer support ticket categories and volume", "Pricing tier and upgrade/downgrade history", "Partner or reseller performance records", "Churn reasons and win/loss interview data", "API or integration usage data"]
   },
   "default": {
-    title: "Revenue Intelligence — Recommended Data",
+    title: "Revenue Intelligence â Recommended Data",
     items: ["Customer contracts and pricing history", "Sales and revenue records by product or service", "Customer interaction and support logs", "Supplier and partner agreements", "Operational cost and margin data", "Any market or competitor benchmarks available"]
   }
 };
 
-const REVENUE_SCAN_PROMPT = `You are running a Revenue Intelligence Scan. Your mandate is different from an operational scan. You are NOT looking for problems. You are looking for MONEY LEFT ON THE TABLE — data assets, relationships, service gaps, whitelabel opportunities, and pricing leakage that represent untapped revenue for this organisation.
+const REVENUE_SCAN_PROMPT = `You are running a Revenue Intelligence Scan. Your mandate is different from an operational scan. You are NOT looking for problems. You are looking for MONEY LEFT ON THE TABLE â data assets, relationships, service gaps, whitelabel opportunities, and pricing leakage that represent untapped revenue for this organisation.
 
 Scan ALL uploaded data for these 5 revenue opportunity categories:
 
@@ -165,33 +165,33 @@ Scan ALL uploaded data for these 5 revenue opportunity categories:
 5. PRICING LEAKAGE: Places where value is being delivered but not charged for, or discounts applied without justification.
 
 INDUSTRY-SPECIFIC LENS:
-— Biotech: Clinical data licensing, research partnerships, doctor-to-patient relationship monetisation.
-— Healthcare: Pathway data value, referral network monetisation, premium service tiers.
-— Construction: Project intelligence data, subcontractor network value, methodology whitelabelling.
-— Manufacturing: Yield data benchmarking, supplier intelligence, excess capacity monetisation.
-— Supply Chain/Logistics: Route and supplier intelligence, fulfilment benchmarking, value-added service gaps.
-— Property Development: Buyer data value, channel performance intelligence, inventory yield optimisation.
-— Financial Services: Cross-sell data patterns, fee recovery, dormant relationship reactivation.
-— Technology: Usage data licensing, API monetisation, feature-to-tier upgrade triggers.
+â Biotech: Clinical data licensing, research partnerships, doctor-to-patient relationship monetisation.
+â Healthcare: Pathway data value, referral network monetisation, premium service tiers.
+â Construction: Project intelligence data, subcontractor network value, methodology whitelabelling.
+â Manufacturing: Yield data benchmarking, supplier intelligence, excess capacity monetisation.
+â Supply Chain/Logistics: Route and supplier intelligence, fulfilment benchmarking, value-added service gaps.
+â Property Development: Buyer data value, channel performance intelligence, inventory yield optimisation.
+â Financial Services: Cross-sell data patterns, fee recovery, dormant relationship reactivation.
+â Technology: Usage data licensing, API monetisation, feature-to-tier upgrade triggers.
 
 For EVERY opportunity found, output in this EXACT format:
 
 OPPORTUNITY [number]
 CATEGORY: [Data Assets / Relationship Value / Service Gap / Whitelabel Potential / Pricing Leakage]
-PATTERN: [what the opportunity is — one clear sentence]
+PATTERN: [what the opportunity is â one clear sentence]
 EVIDENCE: [specific data points from uploaded files with values where available]
-REVENUE POTENTIAL: [estimated value in currency — give a range, show your working]
+REVENUE POTENTIAL: [estimated value in currency â give a range, show your working]
 TIMEFRAME: [Quick Win (0-90 days) / Medium Term (3-12 months) / Strategic (12+ months)]
 ACTION: [the single most important next step to capture this opportunity]
-CONFIDENCE: [HIGH / MODERATE / LOW] — [one-line reasoning]
+CONFIDENCE: [HIGH / MODERATE / LOW] â [one-line reasoning]
 ASSUMPTIONS: [list, flagged as data-backed or inferred]
 
 After all opportunities provide:
 REVENUE INTELLIGENCE SUMMARY
-— Total opportunities identified
-— Total revenue potential range
-— Top 3 quick wins
-— Data gaps that would sharpen this analysis`;
+â Total opportunities identified
+â Total revenue potential range
+â Top 3 quick wins
+â Data gaps that would sharpen this analysis`;
 
 const STYLE_PROMPTS = {
   direct: "Communication style: DIRECT. Lead with the problem. State impact in numbers. Two options max. No softening. Ask for a decision.",
@@ -199,9 +199,9 @@ const STYLE_PROMPTS = {
   balanced: "Communication style: BALANCED. Present situation. 2-3 options with trade-offs. State your recommendation without presuming."
 };
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // STORAGE HELPERS (localStorage-backed)
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const store = {
   get(key) {
     try {
@@ -225,7 +225,7 @@ const store = {
   }
 };
 
-// ── confidenceLabel — maps confidenceScore integer to display label ──
+// ââ confidenceLabel â maps confidenceScore integer to display label ââ
 function confidenceLabel(score) {
   const s = Number(score);
   if (s >= 4) return "HIGH";
@@ -234,16 +234,16 @@ function confidenceLabel(score) {
   return "MODERATE";
 }
 
-// ── loadJournal — reads decision journal from localStorage ──────
+// ââ loadJournal â reads decision journal from localStorage ââââââ
 function loadJournal() {
   try {
     return JSON.parse(localStorage.getItem('dao-journal') || '[]');
   } catch { return []; }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// CLAUDE API — with timeouts and proper error handling
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// CLAUDE API â with timeouts and proper error handling
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function callClaude(systemPrompt, messages, onChunk) {
   if (DEMO_MODE) {
     const full = mockAssistant(systemPrompt, messages);
@@ -320,7 +320,7 @@ async function callClaude(systemPrompt, messages, onChunk) {
   }
 }
 
-// ── Retry wrapper for 429 rate-limit responses ───────────────────
+// ââ Retry wrapper for 429 rate-limit responses âââââââââââââââââââ
 async function fetchWithRetry(url, options, retries = 3) {
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, options);
@@ -385,7 +385,7 @@ IMPACT: Estimated RM 180,000 - RM 320,000 cash tied up; plus late-payment risk.
 ROOT CAUSE: Approval workflow stalls + unclear decision owner.
 FIX: Set a single decision owner; introduce 48-hour escalation; auto-approve under threshold with audit trail.
 SEVERITY: Tier 1
-CONFIDENCE: MODERATE — demo mode inference from sample rows.
+CONFIDENCE: MODERATE â demo mode inference from sample rows.
 ASSUMPTIONS: Ageing column reflects invoice age (inferred); currency is RM (inferred)
 
 FINDING 2
@@ -396,7 +396,7 @@ IMPACT: RM 40,000 - RM 90,000 labour-equivalent cost per quarter; slower cycle t
 ROOT CAUSE: Manual workarounds around missing master data.
 FIX: Add master-data validation at ingestion; block incomplete records.
 SEVERITY: Tier 2
-CONFIDENCE: LOW — needs more structured data.
+CONFIDENCE: LOW â needs more structured data.
 ASSUMPTIONS: Duplicate IDs represent the same case (inferred)
 
 SCAN SUMMARY
@@ -413,9 +413,9 @@ SCAN SUMMARY
 4) When this decision becomes expensive if delayed`;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // FILE PARSING
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function isMeterExport(filename) {
   const n = (filename || '').toLowerCase();
   return n.includes('meter') || n.includes('wtw') ||
@@ -463,7 +463,7 @@ function parseFile(file) {
                 rows: [],
                 headers: [],
                 rowCount: 0,
-                error: 'Could not detect header row — no row with 10 or more populated cells found',
+                error: 'Could not detect header row â no row with 10 or more populated cells found',
               };
               return;
             }
@@ -559,17 +559,17 @@ function parseRevenueFindings(text) {
       confidence: getField("CONFIDENCE"),
       assumptions: getField("ASSUMPTIONS"),
       maxAmount,
-      isQuickWin: /quick win|0.90|0–90/i.test(timeframe)
+      isQuickWin: /quick win|0.90|0â90/i.test(timeframe)
     };
     if (opp.pattern) opportunities.push(opp);
   });
   return opportunities;
 }
 
-// ─── Transform layer ────────────────────────────────────────────────────────
+// âââ Transform layer ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // /api/scan now returns structured JSON; parseFindings/parseRevenueFindings
 // expect the original labelled-text format (FINDING N / OPPORTUNITY N).
-// This function converts the JSON shape → text shape so the existing card
+// This function converts the JSON shape â text shape so the existing card
 // renderers continue to work without any UI changes.
 function transformScanJsonToText(raw) {
   if (!raw) return raw;
@@ -587,7 +587,7 @@ function transformScanJsonToText(raw) {
         `ROOT CAUSE: ${f.rootCause || ''}`,
         `FIX: ${f.fix || ''}`,
         `SEVERITY: ${f.severity || 'Tier 2'}`,
-        `CONFIDENCE: ${f.confidence || ''}${f.confidenceReason ? ' — ' + f.confidenceReason : ''}`,
+        `CONFIDENCE: ${f.confidence || ''}${f.confidenceReason ? ' â ' + f.confidenceReason : ''}`,
         `ASSUMPTIONS: ${Array.isArray(f.assumptions) ? f.assumptions.join('; ') : (f.assumptions || '')}`,
       ].join('\n')).join('\n\n');
     }
@@ -602,12 +602,12 @@ function transformScanJsonToText(raw) {
         `REVENUE POTENTIAL: ${o.revenuePotential || ''}`,
         `TIMEFRAME: ${o.timeframe || ''}`,
         `ACTION: ${o.action || ''}`,
-        `CONFIDENCE: ${o.confidence || ''}${o.confidenceReason ? ' — ' + o.confidenceReason : ''}`,
+        `CONFIDENCE: ${o.confidence || ''}${o.confidenceReason ? ' â ' + o.confidenceReason : ''}`,
         `ASSUMPTIONS: ${Array.isArray(o.assumptions) ? o.assumptions.join('; ') : (o.assumptions || '')}`,
       ].join('\n')).join('\n\n');
     }
   } catch {
-    // Not JSON (plain-text fallback or error string) — pass through unchanged
+    // Not JSON (plain-text fallback or error string) â pass through unchanged
   }
   return raw;
 }
@@ -621,7 +621,7 @@ function parseScanFindings(text, scanType) {
     return [];
   }
 }
-// ────────────────────────────────────────────────────────────────────────────
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 function parseFindings(text) {
   if (!text) return [];
@@ -674,9 +674,9 @@ function parseFindings(text) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // ICONS (inline SVG for zero deps)
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const Icon = ({ d, size = 20, color = "currentColor", ...props }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{d}</svg>
 );
@@ -704,7 +704,7 @@ function RevenueCard({ opp }) {
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>OPP {opp.id}</span>
         <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${catColor}20`, color: catColor }}>{opp.category || "Opportunity"}</span>
-        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${timeframeColor}20`, color: timeframeColor }}>{opp.isQuickWin ? "⚡ Quick Win" : /medium/i.test(opp.timeframe) ? "Medium Term" : "Strategic"}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${timeframeColor}20`, color: timeframeColor }}>{opp.isQuickWin ? "â¡ Quick Win" : /medium/i.test(opp.timeframe) ? "Medium Term" : "Strategic"}</span>
       </div>
       <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: "#E2E8F0" }}>{opp.pattern}</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
@@ -724,7 +724,7 @@ function RevenueCard({ opp }) {
         </div>
       )}
       <button onClick={() => setExpanded(!expanded)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 12, padding: 0 }}>
-        {expanded ? "▲ Hide details" : "▼ Show evidence & assumptions"}
+        {expanded ? "â² Hide details" : "â¼ Show evidence & assumptions"}
       </button>
       {expanded && (
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -770,7 +770,7 @@ function ChangeProjectCard({ project, onUpdateWorkstream }) {
             <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: `${ragColor[overallStatus]}20`, color: ragColor[overallStatus], fontWeight: 600 }}>{overallStatus}</span>
           </div>
         </div>
-        <span style={{ color: "#94A3B8", marginLeft: 12, fontSize: 14 }}>{expanded ? "▲" : "▼"}</span>
+        <span style={{ color: "#94A3B8", marginLeft: 12, fontSize: 14 }}>{expanded ? "â²" : "â¼"}</span>
       </div>
       {expanded && (
         <div style={{ borderTop: "1px solid #1E3A5F" }}>
@@ -818,9 +818,9 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
   const FALLBACK = "Not quantified";
   const [expanded, setExpanded] = useState(false);
   const tierColor = finding.tier === "1" ? "#EF4444" : finding.tier === "2" ? "#F59E0B" : "#10B981";
-  const tierLabel = finding.tier === "1" ? "TIER 1 — HIGH" : finding.tier === "2" ? "TIER 2 — MEDIUM" : "TIER 3 — LOW";
+  const tierLabel = finding.tier === "1" ? "TIER 1 â HIGH" : finding.tier === "2" ? "TIER 2 â MEDIUM" : "TIER 3 â LOW";
   const extractAmount = () => {
-    const m = finding.impact && finding.impact.match(/RM[\s]?[\d,\s]+(?:[–\-][\s]?RM?[\s]?[\d,]+)?/i);
+    const m = finding.impact && finding.impact.match(/RM[\s]?[\d,\s]+(?:[â\-][\s]?RM?[\s]?[\d,]+)?/i);
     return m ? m[0].trim() : finding.maxAmount > 0 ? `RM ${finding.maxAmount.toLocaleString()}` : null;
   };
   return (
@@ -835,14 +835,14 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace", color: "#94A3B8" }}>FINDING {displayNumber ?? finding.id}</span>
           <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: `${tierColor}20`, color: tierColor }}>{tierLabel}</span>
-          {resolved && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#10B98120", color: "#10B981" }}>✓ RESOLVED</span>}
+          {resolved && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#10B98120", color: "#10B981" }}>â RESOLVED</span>}
         </div>
         <button onClick={() => onToggle(finding.id)} style={{
           background: resolved ? "#10B98115" : "#0EA5E915",
           border: `1px solid ${resolved ? "#10B981" : "#0EA5E9"}40`,
           borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 600,
           color: resolved ? "#10B981" : "#0EA5E9", cursor: "pointer", flexShrink: 0
-        }}>{resolved ? "✓ Resolved" : "Mark Resolved"}</button>
+        }}>{resolved ? "â Resolved" : "Mark Resolved"}</button>
       </div>
       <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", lineHeight: 1.4, color: "#E2E8F0" }}>{finding.pattern}</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
@@ -861,7 +861,7 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
         </div>
       <button onClick={() => setExpanded(!expanded)} style={{
         background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 12, padding: 0, display: "flex", alignItems: "center", gap: 4
-      }}>{expanded ? "▲ Hide details" : "▼ Show evidence & root cause"}</button>
+      }}>{expanded ? "â² Hide details" : "â¼ Show evidence & root cause"}</button>
       {expanded && (
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
@@ -881,9 +881,9 @@ function FindingCard({ finding, resolved, onToggle, displayNumber }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // PATTERN MEMORY PANEL
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function PatternMemoryPanel({ patterns }) {
   const [open, setOpen] = useState(false);
   return (
@@ -894,14 +894,14 @@ function PatternMemoryPanel({ patterns }) {
           padding: "12px 16px", background: "#12122a", cursor: "pointer" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 16 }}>🧠</span>
+          <span style={{ fontSize: 16 }}>ðŸ§ </span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>Pattern Memory</span>
           <span style={{ fontSize: 11, background: "#2a2a5a", color: "#8888ff",
             border: "1px solid #4a4a8a", borderRadius: 10, padding: "2px 8px" }}>
             {patterns.length}
           </span>
         </div>
-        <span style={{ color: "#8888bb", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+        <span style={{ color: "#8888bb", fontSize: 12 }}>{open ? "â²" : "â¼"}</span>
       </div>
       {open && (
         <div style={{ background: "#0d0d1f", padding: "12px 16px" }}>
@@ -913,8 +913,8 @@ function PatternMemoryPanel({ patterns }) {
             patterns.map(p => (
               <div key={p.id} style={{ padding: "10px 0", borderBottom: "1px solid #1a1a3a" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>{(() => { const m = p.label.match(/^(\w+):\s(.+)\s\(×\d+\)$/); if (!m) return p.label; const [, field, value] = m; if (field === "rootCause") return `Recurring root cause: ${value}`; if (field === "severity") return `Repeated severity: ${value}`; return `${field}: ${value}`; })()}</span>
-                  <span style={{ fontSize: 11, color: "#8888ff", flexShrink: 0 }}>×{p.count} findings</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>{(() => { const m = p.label.match(/^(\w+):\s(.+)\s\(Ã\d+\)$/); if (!m) return p.label; const [, field, value] = m; if (field === "rootCause") return `Recurring root cause: ${value}`; if (field === "severity") return `Repeated severity: ${value}`; return `${field}: ${value}`; })()}</span>
+                  <span style={{ fontSize: 11, color: "#8888ff", flexShrink: 0 }}>Ã{p.count} findings</span>
                 </div>
                 <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#666688", marginBottom: p.tags.length > 0 ? 6 : 0 }}>
                   {p.avgConfidence > 0 && <span>Avg confidence: {p.avgConfidence}</span>}
@@ -954,9 +954,9 @@ function PatternMemoryPanel({ patterns }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // MAIN APP
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1004,7 +1004,7 @@ export default function App() {
   const [cf, setCf] = useState({ name: "", description: "" });
   const [copilotVariance, setCopilotVariance] = useState({variance:null,confidence:null,reasoning:null,loading:false});
   const [copilotReadyIds, setCopilotReadyIds] = useState([]);
-  // ── dao-situations parse (T-S0.3) ──────────────────────────────
+  // ââ dao-situations parse (T-S0.3) ââââââââââââââââââââââââââââââ
   const rawSituations = (() => {
     try {
       const parsed = JSON.parse(localStorage.getItem('dao-situations'));
@@ -1015,7 +1015,7 @@ export default function App() {
   })();
   const situationCount = rawSituations.length;
   const singleSituationId = situationCount === 1 ? (rawSituations[0]?.id ?? null) : null;
-  // ────────────────────────────────────────────────────────────────
+  // ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   const [decisionHealth, setDecisionHealth] = useState(null);
   const [healthExpanded, setHealthExpanded] = useState(false);
   const [humanOverrode, setHumanOverrode] = useState(false);
@@ -1036,6 +1036,7 @@ export default function App() {
     } catch { return { operational: 'manual', revenue: 'manual' }; }
   });
   const [situationAssessment, setSituationAssessment] = useState(null);
+  const situationIsNew = useRef(false);
   const [loadingSituation, setLoadingSituation] = useState(false);
   const [autoBrief, setAutoBrief] = useState(null);
   const [commandCentreStats, setCommandCentreStats] = useState({
@@ -1048,11 +1049,11 @@ export default function App() {
     localStorage.getItem('dao-active-domain') || DEFAULT_DOMAIN
   );
 
-  // Domain context — reads active domain from localStorage
+  // Domain context â reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
   const domainConfig = getDomain(activeDomain);
 
-  // Health check — determines if live API is available; re-polls every 60 s
+  // Health check â determines if live API is available; re-polls every 60 s
   useEffect(() => {
     const checkHealth = () => {
       fetch("/api/health", { signal: AbortSignal.timeout(5000) })
@@ -1093,7 +1094,17 @@ export default function App() {
     const savedBrief = localStorage.getItem('dao-auto-brief');
     if (savedBrief) { try { setAutoBrief(JSON.parse(savedBrief)); } catch {} }
     const savedSituation = store.get('dao-situation-assessment');
-    if (savedSituation && savedSituation.priorities) { setSituationAssessment(savedSituation); }
+    if (savedSituation) {
+      // REHYDRATION ONLY â must never set situationIsNew.current
+      if (Array.isArray(savedSituation)) {
+        const latest = savedSituation[savedSituation.length - 1];
+        if (latest) setSituationAssessment(latest);
+      } else if (savedSituation.assessment && savedSituation.assessment.priorities) {
+        setSituationAssessment(savedSituation);
+      } else if (savedSituation.priorities) {
+        setSituationAssessment({ assessment: savedSituation, scanId: null, assessedAt: null });
+      }
+    }
     loadCommandCentreStats();
   }, []);
 
@@ -1106,7 +1117,26 @@ export default function App() {
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
   useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
   useEffect(() => { if (revenueScanResults) store.set("dao-revenue-scan", revenueScanResults); }, [revenueScanResults]);
-  useEffect(() => { if (situationAssessment) store.set('dao-situation-assessment', situationAssessment); }, [situationAssessment]);
+  useEffect(() => {
+    if (situationAssessment && situationIsNew.current) {
+      situationIsNew.current = false;
+      try {
+        const existing = store.get('dao-situation-assessment');
+        let history;
+        if (Array.isArray(existing)) {
+          history = existing;
+        } else if (existing && existing.assessment && existing.assessment.priorities) {
+          history = [existing];
+        } else if (existing && existing.priorities) {
+          history = [{ assessment: existing, scanId: null, assessedAt: null }];
+        } else {
+          history = [];
+        }
+        const updated = [...history, situationAssessment].slice(-10);
+        store.set('dao-situation-assessment', updated);
+      } catch {}
+    }
+  }, [situationAssessment]);
   useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
   useEffect(() => { store.set("dao-change-projects", changeProjects); }, [changeProjects]);
   useEffect(() => {
@@ -1187,12 +1217,12 @@ export default function App() {
       ? `\n\nCONNECTED DATA SOURCES:\n${datasets.map(d => `- ${d.name} (${d.type}, ~${d.totalRows || d.rowCount || 0} records)`).join("\n")}`
       : "\n\nNo data sources connected yet. If the CEO asks analytical questions, note that data needs to be uploaded first.";
     const journalContext = journal.length > 0
-      ? `\n\nDECISION JOURNAL (${journal.length} entries):\n${journal.slice(-5).map(j => `[${j.date}] ${j.statement} — Status: ${j.status}, Tier: ${j.tier}`).join("\n")}`
+      ? `\n\nDECISION JOURNAL (${journal.length} entries):\n${journal.slice(-5).map(j => `[${j.date}] ${j.statement} â Status: ${j.status}, Tier: ${j.tier}`).join("\n")}`
       : "";
     return `${IDENTITY_PROMPT}\n\n${styleLine}\n\nCEO PROFILE:\nName: ${profile.name}\nOrganisation: ${profile.org}\nIndustry: ${profile.industry}\nRegion: ${profile.region}\n${dataSummary}${journalContext}\n\n${DIAGNOSTIC_CHAIN}`;
   }, [profile, datasets, journal]);
 
-  // ═══════════ ONBOARDING ═══════════
+  // âââââââââââ ONBOARDING âââââââââââ
   const completeOnboarding = () => {
     const p = { ...ob, createdAt: new Date().toISOString() };
     setProfile(p);
@@ -1202,7 +1232,7 @@ export default function App() {
     localStorage.setItem('dao-active-domain', isWater ? 'water' : 'generic');
     setActiveDomain(isWater ? 'water' : 'generic');
     const modeLabel = apiStatus === "live" ? "Live AI" : "Demo";
-    setChatMsgs([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers — no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data — drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]);
+    setChatMsgs([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers â no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data â drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]);
   };
 
   if (loading) return (
@@ -1211,7 +1241,7 @@ export default function App() {
     </div>
   );
 
-  // ═══════════ ONBOARDING SCREEN ═══════════
+  // âââââââââââ ONBOARDING SCREEN âââââââââââ
   if (!profile) return (
     <div style={{ background: BG_DARK, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: TEXT, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -1221,7 +1251,7 @@ export default function App() {
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Decision Accountability OS</h1>
           <p style={{ color: TEXT_DIM, marginTop: 8, fontSize: 14 }}>Surface truth. Force decisions. Make change stick.</p>
           {apiStatus === "live" && <p style={{ color: GREEN, fontSize: 12, marginTop: 4 }}>Live AI Connected</p>}
-          {apiStatus === "demo" && <p style={{ color: AMBER, fontSize: 12, marginTop: 4 }}>Demo Mode — add API key for live AI</p>}
+          {apiStatus === "demo" && <p style={{ color: AMBER, fontSize: 12, marginTop: 4 }}>Demo Mode â add API key for live AI</p>}
         </div>
 
         {onboardStep === 0 && (
@@ -1266,12 +1296,12 @@ export default function App() {
         {onboardStep === 1 && (
           <div style={{ background: BG_CARD, borderRadius: 16, padding: 32, border: `1px solid ${BORDER}` }}>
             <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>One question to calibrate</h2>
-            <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 24 }}>This shapes how I communicate with you — it can be adjusted later.</p>
+            <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 24 }}>This shapes how I communicate with you â it can be adjusted later.</p>
             <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 24, lineHeight: 1.5 }}>When your team gives you bad news, what frustrates you more?</p>
             {[
               { key: "direct", label: "That they buried it", desc: "I want problems surfaced immediately, no sugarcoating" },
-              { key: "solution", label: "That they didn't come with a solution", desc: "Don't just tell me the problem — tell me what to do" },
-              { key: "balanced", label: "It depends on the situation", desc: "Give me the picture and options — I'll decide" }
+              { key: "solution", label: "That they didn't come with a solution", desc: "Don't just tell me the problem â tell me what to do" },
+              { key: "balanced", label: "It depends on the situation", desc: "Give me the picture and options â I'll decide" }
             ].map(opt => (
               <button key={opt.key} onClick={() => setOb({...ob, style: opt.key})} style={{
                 display: "block", width: "100%", textAlign: "left", padding: "16px 20px", marginBottom: 12,
@@ -1290,7 +1320,7 @@ export default function App() {
     </div>
   );
 
-  // ═══════════ HANDLE FILE UPLOAD ═══════════
+  // âââââââââââ HANDLE FILE UPLOAD âââââââââââ
   const handleFiles = async (files) => {
     const newDatasets = [...datasets];
     for (const file of files) {
@@ -1302,7 +1332,7 @@ export default function App() {
           ? (parsed.rowCount > 0)
           : true;
         if (!isValid) {
-          console.warn('[DAO] Skipping zero-row file — not admitted to datasets:', parsed.name);
+          console.warn('[DAO] Skipping zero-row file â not admitted to datasets:', parsed.name);
           continue;
         }
         newDatasets.push(parsed);
@@ -1339,7 +1369,7 @@ export default function App() {
     setDatasets(prev => [...prev, ...parsedFiles]);
   };
 
-  // ═══════════ RISK RADAR ═══════════
+  // âââââââââââ RISK RADAR âââââââââââ
   async function runRiskRadar() {
     setRiskRadarLoading(true);
     try {
@@ -1416,7 +1446,7 @@ export default function App() {
     await runRiskRadar();
   }
 
-  // ═══════════ ENTERPRISE SCAN ═══════════
+  // âââââââââââ ENTERPRISE SCAN âââââââââââ
   const runScan = async (skipValidation = false) => {
     let findings = [];
     const registry = loadDatasetRegistry();
@@ -1465,7 +1495,7 @@ export default function App() {
         if (Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
           setPatterns(scanData.patterns.map(p => ({
             id: `${p.signal}-${p.value}`,
-            label: `${p.signal}: ${p.value} (×${p.count})`,
+            label: `${p.signal}: ${p.value} (Ã${p.count})`,
             count: p.count,
             tags: [],
             avgConfidence: 0,
@@ -1480,7 +1510,7 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(parseScanFindings(scanData.text, 'revenue'), 'revenue');
+        fetchSituationAssessment(parseScanFindings(scanData.text, 'revenue'), 'revenue', scanData.scanId || null);
         fetchAndStoreAutoBrief(parseScanFindings(scanData.text, 'revenue'), 'revenue');
         loadCommandCentreStats();
       } else {
@@ -1503,7 +1533,7 @@ export default function App() {
         if (Array.isArray(scanData.patterns) && scanData.patterns.length > 0) {
           setPatterns(scanData.patterns.map(p => ({
             id: `${p.signal}-${p.value}`,
-            label: `${p.signal}: ${p.value} (×${p.count})`,
+            label: `${p.signal}: ${p.value} (Ã${p.count})`,
             count: p.count,
             tags: [],
             avgConfidence: 0,
@@ -1518,7 +1548,7 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(parseScanFindings(scanData.text, 'operational'), 'operational');
+        fetchSituationAssessment(parseScanFindings(scanData.text, 'operational'), 'operational', scanData.scanId || null);
         fetchAndStoreAutoBrief(parseScanFindings(scanData.text, 'operational'), 'operational');
         loadCommandCentreStats();
       }
@@ -1559,7 +1589,7 @@ export default function App() {
     localStorage.setItem(key, JSON.stringify(existing.slice(0, 50)));
   }
 
-  async function fetchSituationAssessment(findings, scanType) {
+  async function fetchSituationAssessment(findings, scanType, scanId) {
     if (!findings || findings.length === 0) return;
     setLoadingSituation(true);
     try {
@@ -1569,11 +1599,20 @@ export default function App() {
         body: JSON.stringify({
           findings,
           scanType,
-          domainContext: JSON.stringify(domainConfig)
+          domainContext: JSON.stringify(domainConfig),
+          scanId: scanId || null
         })
       });
       const data = await res.json();
-      if (data.success) setSituationAssessment(data.assessment);
+      if (data.success) {
+        const entry = {
+          assessment: data.assessment,
+          scanId: data.scanId || null,
+          assessedAt: new Date().toISOString()
+        };
+        situationIsNew.current = true;
+        setSituationAssessment(entry);
+      }
     } catch (err) {
       console.error('Situation assessment error:', err);
     } finally {
@@ -1625,7 +1664,7 @@ export default function App() {
     localStorage.setItem('dao-scan-schedule', JSON.stringify(updated));
   }
 
-  // ═══════════ CHAT ═══════════
+  // âââââââââââ CHAT âââââââââââ
   const handleMic = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setMicState("error"); return; }
@@ -1664,7 +1703,7 @@ export default function App() {
 
     // Show user message with file attachments
     const displayContent = attachedFileNames.length > 0
-      ? `${userMsg || "Analyse these files"}${attachedFileNames.map(n => `\n📎 ${n}`).join("")}`
+      ? `${userMsg || "Analyse these files"}${attachedFileNames.map(n => `\nðŸ ${n}`).join("")}`
       : userMsg;
 
     const newMsgs = [...chatMsgs, { role: "user", content: displayContent, msgId: generateMsgId() }];
@@ -1702,7 +1741,7 @@ export default function App() {
       const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
       const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
       const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-      const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+      const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
       setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
       setStreaming(false);
       return;
@@ -1745,7 +1784,7 @@ export default function App() {
       const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
       const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
       const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-      const chiefText = chiefRaw.replace(/[-—–]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+      const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
       setChatMsgs([...snapshot, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
     } catch (e) {
       setChatMsgs([...snapshot, { role: 'assistant', content: 'Something went wrong. Please try again.', confidence: null, failed: true, retryQuery, msgId: generateMsgId() }]);
@@ -1753,7 +1792,7 @@ export default function App() {
     setStreaming(false);
   };
 
-  // ═══════════ AUTO-LOG DECISION DETECTION ═══════════
+  // âââââââââââ AUTO-LOG DECISION DETECTION âââââââââââ
   const detectDecisionInMessage = (content) => {
     const decisionPatterns = [
       /I recommend|recommend that you|my recommendation/i,
@@ -1826,7 +1865,7 @@ export default function App() {
     navigate("/journal");
   };
 
-  // ═══════════ JOURNAL ═══════════
+  // âââââââââââ JOURNAL âââââââââââ
   const addJournalEntry = async () => {
     const formData = { tier: parseInt(jf.tier), owner: jf.owner, review_date: jf.review_date, expected_outcome: jf.expected };
     const { valid, errors } = validateDecision(formData);
@@ -1856,14 +1895,14 @@ export default function App() {
       lifecycleStatus: jf.lifecycleStatus || "Active"
     };
 
-    // Tier 2+ → route through Challenge Check modal
+    // Tier 2+ â route through Challenge Check modal
     if (parseInt(jf.tier) >= 2) {
       setChallengePending(rawEntry);
       setChallengeOpen(true);
       return;
     }
 
-    // Tier 1 → save immediately
+    // Tier 1 â save immediately
     const entry = upgradedDecision(rawEntry);
     const updated = [entry, ...journal];
     setJournal(updated);
@@ -1883,7 +1922,7 @@ export default function App() {
           `[${j.date}] ${j.statement} | Type: ${j.type} | Tier: ${j.tier} | Confidence: ${j.confidence} | Assumptions: ${j.assumptions || "none logged"}`
         ).join("\n");
         const profileResult = await callClaudeSync(
-          `You are analysing a CEO's decision-making patterns to build their Decision Profile. Be direct, specific, and evidence-based. Only state what the data shows — do not fill gaps with generalities.`,
+          `You are analysing a CEO's decision-making patterns to build their Decision Profile. Be direct, specific, and evidence-based. Only state what the data shows â do not fill gaps with generalities.`,
           [{ role: "user", content: `Analyse these ${updated.length} decisions made by ${profile.name} at ${profile.org}:\n\n${journalText}\n\nIdentify:\n1. DOMINANT DECISION TYPE (technical/human/political/cultural) and what this reveals\n2. CONFIDENCE PATTERN (do they over- or under-index confidence vs tier?)\n3. ASSUMPTION RISK (are assumptions data-backed or inferred?)\n4. BLIND SPOT (what decision type is conspicuously absent or under-documented?)\n5. ONE COACHING INSIGHT (the single most important pattern to be aware of)\n\nBe blunt. This is a private profile for the CEO's own growth.` }]
         );
         const profile_data = { text: profileResult, generatedAt: new Date().toISOString(), basedOn: updated.length };
@@ -1915,7 +1954,7 @@ export default function App() {
       rationale = parsed.rationale;
       context = parsed.context;
       confidence = parsed.confidence;
-    } catch (e) { /* fail silently — never block save */ }
+    } catch (e) { /* fail silently â never block save */ }
 
     const entry = upgradedDecision({
       ...challengePending,
@@ -1982,7 +2021,7 @@ export default function App() {
 
   const generateBoardReport = async () => {
     try {
-      // Task 3.7 — re-read all data from storage at PDF generation time (Flag 59)
+      // Task 3.7 â re-read all data from storage at PDF generation time (Flag 59)
       const liveJournal = loadJournal();
       const liveScanResult = store.get("dao-scan");
       const liveCurrency = liveScanResult?.currency || 'RM';
@@ -2019,7 +2058,7 @@ export default function App() {
       gap(2);
       line(`${profile.org}  |  ${profile.industry}  |  ${profile.region?.toUpperCase()}`, 8, false, [148, 163, 184]);
       gap(2);
-      line(`Board Report  —  Generated ${new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" })}  —  ${profile.name}`, 8, false, [148, 163, 184]);
+      line(`Board Report  â  Generated ${new Date().toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric" })}  â  ${profile.name}`, 8, false, [148, 163, 184]);
       const generatedAt = new Date().toLocaleString("en-MY", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
       line(`Generated at:  ${generatedAt}`, 8, false, [148, 163, 184]);
       gap(6);
@@ -2086,10 +2125,10 @@ export default function App() {
         liveChangeProjects.forEach(p => {
           const pct = Math.round(p.workstreams.reduce((s, w) => s + w.pct, 0) / p.workstreams.length);
           const atRisk = p.workstreams.filter(w => w.status === "At Risk").length;
-          line(`${stripMd(p.name)}  —  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
+          line(`${stripMd(p.name)}  â  ${pct}% complete${atRisk > 0 ? `  |  ${atRisk} workstream(s) AT RISK` : ""}`, 10, true, [226, 232, 240]);
           gap(2);
           p.workstreams.forEach(w => {
-            line(`     ${w.name}:  ${w.status}  (${w.pct}%)${w.note ? "  — " + stripMd(w.note).substring(0, 50) : ""}`, 8, false, [148, 163, 184]);
+            line(`     ${w.name}:  ${w.status}  (${w.pct}%)${w.note ? "  â " + stripMd(w.note).substring(0, 50) : ""}`, 8, false, [148, 163, 184]);
             gap(1);
           });
           gap(4);
@@ -2105,7 +2144,7 @@ export default function App() {
     }
   };
 
-  // ═══════════ RESET ═══════════
+  // âââââââââââ RESET âââââââââââ
   const resetAll = () => {
     store.del("dao-profile");
     store.del("dao-journal");
@@ -2226,7 +2265,7 @@ export default function App() {
     data: "/connect"
   };
 
-  // ═══════════ MAIN LAYOUT ═══════════
+  // âââââââââââ MAIN LAYOUT âââââââââââ
   return (
     <div style={{ background: BG_DARK, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: TEXT, display: "flex", flexDirection: "column" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -2240,9 +2279,9 @@ export default function App() {
           <div>
             <div style={{ fontSize: 13, letterSpacing: 3, color: ACCENT, fontWeight: 600 }}>30GENS</div>
             <div style={{ fontSize: 11, color: TEXT_DIM }}>
-              {profile.org} • {profile.industry}
+              {profile.org} â¢ {profile.industry}
               {localStorage.getItem('dao-active-domain') === 'water' && (
-                <span style={{ color: "#5EEAD4", marginLeft: 5, fontWeight: 400 }}>• Domain Active</span>
+                <span style={{ color: "#5EEAD4", marginLeft: 5, fontWeight: 400 }}>â¢ Domain Active</span>
               )}
             </div>
           </div>
@@ -2333,7 +2372,7 @@ export default function App() {
             <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
             <Route path="/board" element={<Navigate to="/chat" replace />} />
 
-          {/* ═══════ CHAT VIEW ═══════ */}
+          {/* âââââââ CHAT VIEW âââââââ */}
             <Route path="/chat" element={(
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               {/* Chat sub-header: Chief Status + Clear History */}
@@ -2369,7 +2408,7 @@ export default function App() {
                     onMouseLeave={e => { e.currentTarget.style.color = TEXT_DIM; }}
                     title="Clear chat history"
                   >
-                    🗑 Clear History
+                    ðŸ Clear History
                   </button>
                 )}
                 {confirmClearHistory && (
@@ -2518,7 +2557,7 @@ export default function App() {
                           e.currentTarget.style.borderColor = `${ACCENT}40`;
                         }}
                       >
-                        📝 Log to Journal
+                        ðŸ Log to Journal
                       </button>
                     )}
                   </div>
@@ -2594,7 +2633,7 @@ export default function App() {
                     const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
                     const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
                     const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-                    const chiefText = chiefRaw.replace(/[-–—]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
+                    const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
                     setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
                   } catch (e) {
                     setChatMsgs(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() }]);
@@ -2676,14 +2715,14 @@ export default function App() {
                   />
                   <button
                     onClick={handleMic}
-                    title={micState === "error" ? "Voice not supported" : micState === "listening" ? "Listening…" : "Voice input"}
+                    title={micState === "error" ? "Voice not supported" : micState === "listening" ? "Listeningâ¦" : "Voice input"}
                     style={{
                       background: "none", border: "none", cursor: "pointer", fontSize: 20,
                       color: micState === "listening" ? "#EF4444" : "#64748B",
                       animation: micState === "listening" ? "pulse 1s infinite" : "none",
                       flexShrink: 0, padding: "6px"
                     }}
-                  >🎤</button>
+                  >ðŸ¤</button>
                   <button onClick={sendMessage} disabled={streaming || (!chatInput.trim() && chatFiles.length === 0)} style={{ ...btnPrimary, padding: "10px 16px", opacity: (chatInput.trim() || chatFiles.length > 0) && !streaming ? 1 : 0.4, flexShrink: 0 }}>
                     <SendIcon size={18} color="#fff"/>
                   </button>
@@ -2692,7 +2731,7 @@ export default function App() {
             </div>
           )} />
 
-          {/* ═══════ DASHBOARD VIEW ═══════ */}
+          {/* âââââââ DASHBOARD VIEW âââââââ */}
             <Route path="/dashboard" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
 
@@ -2763,7 +2802,7 @@ export default function App() {
                       borderRadius: 6, padding: '8px 16px', cursor: 'pointer',
                       fontWeight: 600, fontSize: 13
                     }}>
-                    ⚡ Run Scan
+                    â¡ Run Scan
                   </button>
                   {autoBrief && (
                     <button
@@ -2774,45 +2813,45 @@ export default function App() {
                         padding: '8px 16px', cursor: 'pointer',
                         fontWeight: 600, fontSize: 13
                       }}>
-                      📋 View Brief
+                      ðŸ View Brief
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* ── Hero CTA ── */}
+              {/* ââ Hero CTA ââ */}
               <div style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 14, padding: "20px 16px", marginBottom: 14 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", color: TEXT }}>Decision Intelligence, Activated.</h2>
                 <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 14px" }}>Surface your top risks, opportunities, and decisions in 60 seconds.</p>
                 <button onClick={() => navigate("/brief")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  ⚡ Generate 60-second Brief
+                  â¡ Generate 60-second Brief
                 </button>
                 <button onClick={() => navigate("/chat")} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", marginTop: 10, padding: 0, fontFamily: "'DM Sans', sans-serif", display: "block", width: "100%", textAlign: "center" }}>
-                  💬 Discuss with AI
+                  ðŸ¬ Discuss with AI
                 </button>
               </div>
 
-              {/* ── 4-step flow ── */}
+              {/* ââ 4-step flow ââ */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
-                {[["📁", "Upload"], ["🔍", "Scan"], ["✅", "Decide"], ["📋", "Track"]].map(([icon, label], i, arr) => (
+                {[["ðŸ", "Upload"], ["ðŸ", "Scan"], ["â", "Decide"], ["ðŸ", "Track"]].map(([icon, label], i, arr) => (
                   <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                       <span style={{ fontSize: 18 }}>{icon}</span>
                       <span style={{ fontSize: 10, fontWeight: 600, color: TEXT_DIM, letterSpacing: 0.5 }}>{label}</span>
                     </span>
-                    {i < arr.length - 1 && <span style={{ color: BORDER, margin: "0 2px", fontSize: 14 }}>→</span>}
+                    {i < arr.length - 1 && <span style={{ color: BORDER, margin: "0 2px", fontSize: 14 }}>â</span>}
                   </span>
                 ))}
               </div>
 
-              {/* ── DAL Health widget ── */}
+              {/* ââ DAL Health widget ââ */}
               {(() => {
                 const today = new Date().toISOString().split("T")[0];
                 const due = journal.filter(e => e.review_date && e.review_date <= today && e.status !== "Reviewed").length;
                 return (
                   <button onClick={() => navigate("/journal")} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: BG_CARD, border: `1px solid ${due > 0 ? AMBER : GREEN}40`, borderRadius: 10, padding: "10px 14px", cursor: "pointer", marginBottom: 16, textAlign: "left", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box" }}>
                     <span style={{ fontSize: 12, color: TEXT_DIM }}>Reviews Due</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "✓ No reviews due"}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: due > 0 ? AMBER : GREEN }}>{due > 0 ? `${due} pending` : "â No reviews due"}</span>
                   </button>
                 );
               })()}
@@ -2823,7 +2862,7 @@ export default function App() {
                   <p style={{ color: "#94A3B8", fontSize: 12, margin: 0 }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
                 </div>
                 <button onClick={generateBoardReport} style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 700, color: ACCENT, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                  ⬇ Export Board Report
+                  â¬ Export Board Report
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
@@ -2854,12 +2893,12 @@ export default function App() {
                         <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", marginBottom: 2, lineHeight: 1.3 }}>{f.pattern}</div>
                         {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>RM {f.dailyCost.toLocaleString()} / day</div>}
                       </div>
-                      <button onClick={() => navigate("/situations")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View →</button>
+                      <button onClick={() => navigate("/situations")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View â</button>
                     </div>
                   ))}
                   {parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length === 0 && (
                     <div style={{ fontSize: 13, color: "#94A3B8", padding: "16px 0", textAlign: "center" }}>
-                      {parsedFindings.length > 0 ? "🎉 All findings resolved!" : "Run an Enterprise Scan to populate priorities."}
+                      {parsedFindings.length > 0 ? "ðŸ All findings resolved!" : "Run an Enterprise Scan to populate priorities."}
                     </div>
                   )}
                 </div>
@@ -2868,7 +2907,7 @@ export default function App() {
                 <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 16, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "#0EA5E9" }}>RECENT DECISIONS</div>
-                    <button onClick={() => navigate("/journal")} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 11 }}>View all →</button>
+                    <button onClick={() => navigate("/journal")} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 11 }}>View all â</button>
                   </div>
                   {journal.slice(0, 3).map((entry, i) => (
                     <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, marginBottom: i < Math.min(journal.length, 3) - 1 ? 10 : 0, borderBottom: i < Math.min(journal.length, 3) - 1 ? "1px solid #1E3A5F" : "none" }}>
@@ -2881,13 +2920,13 @@ export default function App() {
               )}
               {parsedFindings.length === 0 && datasets.length === 0 && (
                 <div style={{ background: "#111827", border: "1px solid #1E3A5F", borderRadius: 12, padding: 32, textAlign: "center" }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>ðŸ¯</div>
                   <h3 style={{ fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: "#E2E8F0" }}>Start Your First Scan</h3>
                   <p style={{ color: "#94A3B8", fontSize: 13, margin: "0 0 16px" }}>Upload operational data to see findings, financial exposure, and priorities here.</p>
-                  <button onClick={() => navigate("/connect")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data →</button>
+                  <button onClick={() => navigate("/connect")} style={{ background: "#0EA5E9", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Upload Data â</button>
                 </div>
               )}
-              {/* ── Decision Health widget ── */}
+              {/* ââ Decision Health widget ââ */}
               {decisionHealth && decisionHealth.results && decisionHealth.results.length > 0 && (
                 <div style={{margin:'16px 0',border:'1px solid #2a2a4a',borderRadius:'12px',
                   overflow:'hidden'}}>
@@ -2896,7 +2935,7 @@ export default function App() {
                     style={{display:'flex',justifyContent:'space-between',alignItems:'center',
                       padding:'12px 16px',background:'#12122a',cursor:'pointer'}}>
                     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                      <span style={{fontSize:'16px'}}>🏥</span>
+                      <span style={{fontSize:'16px'}}>ðŸ¥</span>
                       <span style={{fontSize:'13px',fontWeight:'600',color:'#e0e0ff'}}>
                         Decision Health
                       </span>
@@ -2910,7 +2949,7 @@ export default function App() {
                       </span>
                     </div>
                     <span style={{color:'#8888bb',fontSize:'12px'}}>
-                      {healthExpanded ? '▲' : '▼'}
+                      {healthExpanded ? 'â²' : 'â¼'}
                     </span>
                   </div>
                   {healthExpanded && (
@@ -2952,15 +2991,15 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── Pattern Memory panel ── */}
+              {/* ââ Pattern Memory panel ââ */}
               <PatternMemoryPanel patterns={patterns} />
 
-              {/* ── Risk Radar panel ── */}
+              {/* ââ Risk Radar panel ââ */}
               <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: TEXT, cursor: "pointer" }} onClick={() => setShowRiskRadar(v => !v)}>
-                      🎯 Decision Risk Radar
+                      ðŸ¯ Decision Risk Radar
                     </span>
                     {riskRadar.length > 0 && (
                       <span style={{ background: `${RED}30`, color: RED, fontSize: 11, fontWeight: 700, borderRadius: 10, padding: "2px 8px" }}>
@@ -2977,7 +3016,7 @@ export default function App() {
                       {riskRadarLoading ? "Scanning..." : "Run Radar"}
                     </button>
                     <span style={{ fontSize: 12, color: TEXT_DIM, cursor: "pointer" }} onClick={() => setShowRiskRadar(v => !v)}>
-                      {showRiskRadar ? "▲" : "▼"}
+                      {showRiskRadar ? "â²" : "â¼"}
                     </span>
                   </div>
                 </div>
@@ -2999,7 +3038,7 @@ export default function App() {
                               </span>
                               <span style={{ fontSize: 12, fontWeight: 600, color: TEXT_DIM }}>{risk.riskType}</span>
                             </div>
-                            <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 2 }}>{(risk.statement || "").slice(0, 60)}{(risk.statement || "").length > 60 ? "…" : ""}</div>
+                            <div style={{ fontSize: 13, color: TEXT, fontWeight: 500, marginBottom: 2 }}>{(risk.statement || "").slice(0, 60)}{(risk.statement || "").length > 60 ? "â¦" : ""}</div>
                             <div style={{ fontSize: 12, color: TEXT_DIM }}>{risk.reason}</div>
                           </div>
                         ))}
@@ -3009,10 +3048,10 @@ export default function App() {
                 )}
               </div>
 
-              {/* ── Board Pack panel ── */}
+              {/* ââ Board Pack panel ââ */}
               <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>📋 Board Pack</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>ðŸ Board Pack</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <button
                       onClick={handleGenerateBoardPack}
@@ -3123,15 +3162,15 @@ export default function App() {
             </div>
           )} />
 
-          {/* ═══════ SCAN VIEW ═══════ */}
+          {/* âââââââ SCAN VIEW âââââââ */}
             <Route path="/situations" element={(() => {
-              const priorities = situationAssessment?.priorities || [];
+              const priorities = situationAssessment?.assessment?.priorities || [];
               return priorities.length >= 2
                 ? <SituationQueue priorities={priorities} />
                 : <EmptyState dataConnected={datasets.length > 0} onScan={runScan} />;
             })()} />
 
-          {/* ═══════ JOURNAL VIEW ═══════ */}
+          {/* âââââââ JOURNAL VIEW âââââââ */}
             <Route path="/journal" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -3150,9 +3189,9 @@ export default function App() {
                     <label style={labelStyle}>
                       <span style={labelText}>Severity Tier</span>
                       <select value={jf.tier} onChange={e => { const v = e.target.value; setJf({...jf, tier: v}); setMatchingPatterns(findMatchingPatterns({...jf, tier: v}, patterns)); }} style={inputStyle}>
-                        <option value="1">Tier 1 — Low</option>
-                        <option value="2">Tier 2 — Medium</option>
-                        <option value="3">Tier 3 — High</option>
+                        <option value="1">Tier 1 â Low</option>
+                        <option value="2">Tier 2 â Medium</option>
+                        <option value="3">Tier 3 â High</option>
                       </select>
                     </label>
                     <label style={labelStyle}>
@@ -3173,7 +3212,7 @@ export default function App() {
                   </label>
                   <label style={labelStyle}>
                     <span style={labelText}>Assumptions (flagged for validation)</span>
-                    <textarea value={jf.assumptions} onChange={e => setJf({...jf, assumptions: e.target.value})} placeholder="List assumptions — note which are data-backed vs inferred..." rows={2} style={{...inputStyle, resize: "vertical"}}/>
+                    <textarea value={jf.assumptions} onChange={e => setJf({...jf, assumptions: e.target.value})} placeholder="List assumptions â note which are data-backed vs inferred..." rows={2} style={{...inputStyle, resize: "vertical"}}/>
                   </label>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <label style={labelStyle}>
@@ -3228,10 +3267,10 @@ export default function App() {
                   {matchingPatterns.length > 0 && (
                     <div style={{ background: "#fffbe6", border: "1px solid #ffe58f",
                       borderRadius: 6, padding: "8px 12px", marginTop: 8 }}>
-                      <strong>⚠ Pattern detected:</strong>{" "}
+                      <strong>â  Pattern detected:</strong>{" "}
                       {matchingPatterns.map(p => p.label).join(", ")}
                       <span style={{ marginLeft: 8, fontSize: 12, color: "#888" }}>
-                        — you've made similar decisions before
+                        â you've made similar decisions before
                       </span>
                     </div>
                   )}
@@ -3247,7 +3286,7 @@ export default function App() {
                   </label>
                   {dalErrors.length > 0 && (
                     <div style={{ color: "#EF4444", fontSize: 12, marginBottom: 8 }}>
-                      {dalErrors.map((err, i) => <div key={i}>⚠ {err}</div>)}
+                      {dalErrors.map((err, i) => <div key={i}>â  {err}</div>)}
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -3257,11 +3296,11 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── Challenge Check Modal (Tier 2+) ── */}
+              {/* ââ Challenge Check Modal (Tier 2+) ââ */}
               {challengeOpen && (
                 <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 28, maxWidth: 480, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: AMBER, marginBottom: 8 }}>CHALLENGE CHECK — TIER {challengePending?.tier}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: AMBER, marginBottom: 8 }}>CHALLENGE CHECK â TIER {challengePending?.tier}</div>
                     <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 4 }}>{challengePending?.statement}</div>
                     <div style={{ fontSize: 12, color: TEXT_DIM, marginBottom: 20 }}>Review the checklist below before confirming this decision.</div>
                     {[
@@ -3282,11 +3321,11 @@ export default function App() {
                       </label>
                     ))}
                     {rationaleLoading && (
-                      <div style={{ fontSize: 12, color: ACCENT, marginTop: 8, marginBottom: 4 }}>Generating rationale via Claude…</div>
+                      <div style={{ fontSize: 12, color: ACCENT, marginTop: 8, marginBottom: 4 }}>Generating rationale via Claudeâ¦</div>
                     )}
                     <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                       <button onClick={confirmDecision} disabled={rationaleLoading} style={{ ...btnPrimary, opacity: rationaleLoading ? 0.5 : 1 }}>
-                        {rationaleLoading ? "Saving…" : "Confirm"}
+                        {rationaleLoading ? "Savingâ¦" : "Confirm"}
                       </button>
                       <button onClick={() => setChallengeOpen(false)} disabled={rationaleLoading} style={btnSmall}>Revise</button>
                       <button onClick={() => { setChallengeOpen(false); setChallengePending(null); setCheckedFlags([]); setJf({ statement: "", tier: "1", type: "technical", evidence: "", assumptions: "", confidence: "moderate", expected: "", owner: "", review_date: (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })(), reviewDays: 30 }); }} disabled={rationaleLoading} style={{ ...btnSmall, color: RED }}>Defer</button>
@@ -3298,7 +3337,7 @@ export default function App() {
               {decisionProfile && (
                 <div style={{ background: "#A78BFA10", border: "1px solid #A78BFA40", borderRadius: 12, padding: 16, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "#A78BFA" }}>DECISION PROFILE — THEORY OF MIND</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "#A78BFA" }}>DECISION PROFILE â THEORY OF MIND</div>
                     <span style={{ fontSize: 11, color: TEXT_DIM }}>Based on {decisionProfile.basedOn} decisions</span>
                   </div>
                   <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", color: TEXT }}>{decisionProfile.text}</div>
@@ -3309,13 +3348,13 @@ export default function App() {
                   Analysing your decision patterns... Building your Decision Profile.
                 </div>
               )}
-              {/* ── Review tabs ── */}
+              {/* ââ Review tabs ââ */}
               <div style={{ display: "flex", gap: 4, background: "#0B1120", borderRadius: 12, padding: 4, marginBottom: 16 }}>
                 <button onClick={() => setReviewTab("all")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: reviewTab === "all" ? BG_CARD : "transparent", color: reviewTab === "all" ? TEXT : TEXT_DIM, boxShadow: reviewTab === "all" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>All Decisions</button>
-                <button onClick={() => setReviewTab("queue")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: reviewTab === "queue" ? BG_CARD : "transparent", color: reviewTab === "queue" ? AMBER : TEXT_DIM, boxShadow: reviewTab === "queue" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>📋 Review Queue</button>
+                <button onClick={() => setReviewTab("queue")} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: reviewTab === "queue" ? BG_CARD : "transparent", color: reviewTab === "queue" ? AMBER : TEXT_DIM, boxShadow: reviewTab === "queue" ? "0 1px 4px rgba(0,0,0,0.3)" : "none", transition: "all 0.2s" }}>ðŸ Review Queue</button>
               </div>
 
-              {/* ── Journal list ── */}
+              {/* ââ Journal list ââ */}
               {(() => {
                 const today = new Date().toISOString().split("T")[0];
                 const queueEntries = journal.filter(e => e.review_date && e.review_date <= today && e.status !== "Reviewed");
@@ -3347,7 +3386,7 @@ export default function App() {
                               <span title="DAO Chief Ready: the AI assistant has sufficient context on this assumption to support a decision review session." style={{fontSize:'10px',background:'#2a2a5a',color:'#8888ff',
                                 border:'1px solid #4a4a8a',borderRadius:'4px',padding:'2px 6px',
                                 marginLeft:'8px',verticalAlign:'middle'}}>
-                                ⚡ DAO Chief Ready
+                                â¡ DAO Chief Ready
                               </span>
                             )}
                           </h4>
@@ -3393,7 +3432,7 @@ export default function App() {
                           <button onClick={() => {
                             setReviewModal(entry);
                             setReviewForm({ verdict: "On Track", actual_outcome: "", lesson: "", variance: "", reviewNotes: "", updateStatus: "" });
-                          }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>📝 Review</button>
+                          }} style={{ ...btnSmall, color: ACCENT, borderColor: `${ACCENT}40` }}>ðŸ Review</button>
                         </div>
                       )}
                     </div>
@@ -3401,7 +3440,7 @@ export default function App() {
                 });
               })()}
 
-              {/* ── Review modal ── */}
+              {/* ââ Review modal ââ */}
               {reviewModal && (
                 <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
                   <div style={{ background: BG_SURFACE, borderRadius: 16, border: `1px solid ${ACCENT}40`, padding: 24, width: "100%", maxWidth: 480 }}>
@@ -3469,7 +3508,7 @@ export default function App() {
                         padding:'12px',marginBottom:'12px'}}>
                         <div style={{fontSize:'11px',color:'#8888bb',marginBottom:'6px',
                           textTransform:'uppercase',letterSpacing:'1px'}}>
-                          ⚡ DAO Chief Suggestion
+                          â¡ DAO Chief Suggestion
                         </div>
                         <div style={{fontSize:'13px',color:'#e0e0ff',marginBottom:'4px'}}>
                           <strong>{copilotVariance.variance}</strong>
@@ -3491,7 +3530,7 @@ export default function App() {
                               checked={reviewForm.variance === v}
                               onChange={() => { setReviewForm(f => ({...f, variance: v})); setHumanOverrode(true); }}
                               style={{ accentColor: v === "Better" ? GREEN : v === "Worse" ? RED : AMBER }}
-                            /> {v === "Better" ? "⬆ Better" : v === "Same" ? "➡ Same" : "⬇ Worse"}
+                            /> {v === "Better" ? "â¬ Better" : v === "Same" ? "â¡ Same" : "â¬ Worse"}
                           </label>
                         ))}
                       </div>
@@ -3514,7 +3553,7 @@ export default function App() {
                     <label style={labelStyle}>
                       <span style={labelText}>Update Status</span>
                       <select value={reviewForm.updateStatus} onChange={e => setReviewForm({...reviewForm, updateStatus: e.target.value})} style={inputStyle}>
-                        <option value="">— Select status (default after review: Monitoring) —</option>
+                        <option value="">â Select status (default after review: Monitoring) â</option>
                         <option value="Active">Active</option>
                         <option value="Draft">Draft</option>
                         <option value="Pending">Pending</option>
@@ -3536,7 +3575,7 @@ export default function App() {
             </div>
           )} />
 
-          {/* ═══════ CHANGE TRACKER VIEW ═══════ */}
+          {/* âââââââ CHANGE TRACKER VIEW âââââââ */}
             <Route path="/track" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -3578,7 +3617,7 @@ export default function App() {
             </div>
           )} />
 
-          {/* ═══════ BRIEF VIEW ═══════ */}
+          {/* âââââââ BRIEF VIEW âââââââ */}
             <Route path="/brief" element={(
             <BriefView
               profile={profile}
@@ -3615,7 +3654,7 @@ export default function App() {
                 />
               </div>
 
-              {/* DataConnection — T-S0.4 */}
+              {/* DataConnection â T-S0.4 */}
               <DataConnection runScan={runScan} scanning={scanning} />
 
               <div style={{
@@ -3659,14 +3698,14 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.priorities || []} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} />}
               />
           </Routes>
           </ShellFrame>
         </main>
       </div>
 
-      {/* ── Scan Validation Modal — T-PW.9 ─────────────────────────────── */}
+      {/* ââ Scan Validation Modal â T-PW.9 âââââââââââââââââââââââââââââââ */}
       {showScanValidation && scanValidation && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
@@ -3711,9 +3750,9 @@ export default function App() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // SHARED STYLES
-// ═══════════════════════════════════════════════════════════════
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const inputStyle = {
   width: "100%", padding: "10px 14px", background: BG_SURFACE, border: `1px solid ${BORDER}`,
   borderRadius: 10, color: TEXT, fontSize: 14, outline: "none", fontFamily: "'DM Sans', sans-serif",
@@ -3739,5 +3778,5 @@ function StepRouter({ priorities }) {
   if (n === '1' && matched) {
     return <OpeningMoment priority={matched} />;
   }
-  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step — coming soon.</div>;
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step â coming soon.</div>;
 }

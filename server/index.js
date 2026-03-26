@@ -315,7 +315,9 @@ Provide exactly 3 priorities. Return only valid JSON.`;
     const raw = response.content[0].text.trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const assessment = JSON.parse(clean);
-    res.json({ success: true, assessment });
+    const incomingScanId = req.body.scanId || null;
+    console.log(`[DAO truth] /api/situation | ${new Date().toISOString()} | urgency: ${assessment.urgencyLevel || 'unknown'} | priorities: ${Array.isArray(assessment.priorities) ? assessment.priorities.length : 0} | scanId: ${incomingScanId || 'none'}`);
+    res.json({ success: true, assessment, scanId: incomingScanId });
   } catch (err) {
     console.error('/api/situation error:', err);
     res.status(500).json({ error: err.message });
@@ -364,6 +366,7 @@ Provide exactly 3 keyFindings and 3 recommendedActions. Return only valid JSON.`
     const raw = response.content[0].text.trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const brief = JSON.parse(clean);
+    console.log(`[DAO truth] /api/generate-brief | ${new Date().toISOString()}`);
     res.json({ success: true, brief });
   } catch (err) {
     console.error('/api/generate-brief error:', err);
@@ -707,7 +710,9 @@ app.post('/api/scan', async (req, res) => {
           const retryFindingsForPatterns = Array.isArray(retryParsedForPatterns.findings) ? retryParsedForPatterns.findings : [];
           retryDerivedPatterns = derivePatterns(retryFindingsForPatterns);
         } catch { retryDerivedPatterns = []; }
-        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns, currency: detectedCurrency });
+        const scanId = `scan-${Date.now()}`;
+        console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(retryClean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId} | retry: true`);
+        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns, currency: detectedCurrency, scanId });
       } catch (retryErr) {
         console.error('[/api/scan] Retry threw:', retryErr.message);
         return res.status(422).json({ error: 'scan_output_invalid', text: raw });
@@ -719,7 +724,9 @@ app.post('/api/scan', async (req, res) => {
       const findingsForPatterns = Array.isArray(parsedForPatterns.findings) ? parsedForPatterns.findings : [];
       derivedPatterns = derivePatterns(findingsForPatterns);
     } catch { derivedPatterns = []; }
-    return res.status(200).json({ text: clean, patterns: derivedPatterns, currency: detectedCurrency });
+    const scanId = `scan-${Date.now()}`;
+    console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(clean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId}`);
+    return res.status(200).json({ text: clean, patterns: derivedPatterns, currency: detectedCurrency, scanId });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
     return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });
