@@ -1035,14 +1035,31 @@ Rules you must follow:
     };
 
     const attempt = async () => {
-      const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
-        max_tokens: 1000,
-        temperature: 0,
-        system: 'You are a strategic executive advisor. Always respond with valid JSON only. No preamble. No markdown. No explanation.',
-        messages: [{ role: 'user', content: buildPrompt() }]
+      const KEY = getApiKey();
+      if (!KEY) throw new Error('API key not configured');
+
+      const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 1000,
+          temperature: 0,
+          system: 'You are a strategic executive advisor. Always respond with valid JSON only. No preamble. No markdown. No explanation.',
+          messages: [{ role: 'user', content: buildPrompt() }]
+        })
       });
-      const raw = response.content[0].text.trim();
+
+      const data = await apiResponse.json();
+      if (!apiResponse.ok || !data?.content?.[0]?.text) {
+        throw new Error(data?.error?.message || `Anthropic API error: ${apiResponse.status}`);
+      }
+
+      const raw = data.content[0].text.trim();
       const clean = raw.replace(/```json|```/g, '').trim();
       return JSON.parse(clean);
     };
