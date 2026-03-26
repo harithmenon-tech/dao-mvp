@@ -2225,7 +2225,7 @@ export default function App() {
             {apiStatus === "live" ? "LIVE" : "DEMO"}
           </span>
           {datasets.length > 0 && (
-            <button onClick={runScan} disabled={scanning} style={{ ...btnSmall, background: scanning ? BG_SURFACE : `${GREEN}20`, color: scanning ? TEXT_DIM : GREEN, border: `1px solid ${scanning ? BORDER : GREEN}40` }}>
+            <button onClick={() => runScan()} disabled={scanning} style={{ ...btnSmall, background: scanning ? BG_SURFACE : `${GREEN}20`, color: scanning ? TEXT_DIM : GREEN, border: `1px solid ${scanning ? BORDER : GREEN}40` }}>
               {scanning ? "Scanning..." : "Scan"}
             </button>
           )}
