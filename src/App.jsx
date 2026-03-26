@@ -3629,6 +3629,47 @@ export default function App() {
         </main>
       </div>
 
+      {/* ── Scan Validation Modal — T-PW.9 ─────────────────────────────── */}
+      {showScanValidation && scanValidation && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16,
+        }}>
+          <div style={{
+            background: BG_CARD, border: `1px solid ${BORDER}`,
+            borderRadius: 16, padding: 28, maxWidth: 480, width: '100%',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: ACCENT, marginBottom: 8 }}>
+              SCAN READY
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: TEXT, marginBottom: 8 }}>
+              {scanValidation.included_files?.length || 0} file{(scanValidation.included_files?.length || 0) !== 1 ? 's' : ''} ready to scan
+            </div>
+            {scanValidation.excluded_files?.length > 0 && (
+              <div style={{ fontSize: 13, color: TEXT_DIM, marginBottom: 16, lineHeight: 1.5 }}>
+                {scanValidation.excluded_files.length} file{scanValidation.excluded_files.length !== 1 ? 's' : ''} excluded from this scan type.
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+              <button
+                onClick={proceedWithScan}
+                style={{ ...btnPrimary }}
+              >
+                Proceed with scan
+              </button>
+              <button
+                onClick={() => { setShowScanValidation(false); setScanValidation(null); }}
+                style={{ ...btnSmall }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
