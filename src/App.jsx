@@ -11,6 +11,7 @@ import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDa
 import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 import ShellFrame from './components/ShellFrame.jsx';
+import OpeningMoment from './components/OpeningMoment.jsx';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
 import DataConnection from './components/DataConnection.jsx';
 import SituationQueue from './components/SituationQueue.jsx';
@@ -3610,7 +3611,10 @@ export default function App() {
             </div>
           )} />
 
-            <Route path="/situation/:id/step/:n" element={<div style={{ padding: 16, color: "#E2E8F0" }}>Situation step — coming soon.</div>} />
+            <Route
+                path="/situation/:id/step/:n"
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} />}
+              />
           </Routes>
           </ShellFrame>
         </main>
@@ -3641,3 +3645,12 @@ const btnSmall = {
 };
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
+
+function StepRouter({ priorities }) {
+  const { id, n } = useParams();
+  const matched = priorities.find(p => String(p.rank) === String(id));
+  if (n === '1' && matched) {
+    return <OpeningMoment priority={matched} />;
+  }
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step — coming soon.</div>;
+}

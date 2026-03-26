@@ -296,7 +296,9 @@ Respond in this exact JSON format with no preamble or markdown:
       "severity": "HIGH|MEDIUM|LOW",
       "insight": "one sentence insight",
       "action": "one sentence recommended action",
-      "timeframe": "immediate|this week|this month"
+      "timeframe": "immediate|this week|this month",
+      "impactValue": "short currency or value string for dominant display e.g. RM 2.4M or $340K",
+      "impactLabel": "short phrase max 5 words e.g. Estimated revenue at risk"
     }
   ],
   "chiefQuestion": "The single most important question the CEO should be asking right now"
