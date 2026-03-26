@@ -35,7 +35,7 @@ function findEvidence(priority, findings) {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function CausalChain({ priorities, findings, onNext, priorCase }) {
+export default function CausalChain({ priorities, findings, onNext }) {
   if (!priorities || priorities.length === 0) {
     return (
       <div style={{ padding: 24, color: TEXT_DIM, fontSize: 14 }}>
@@ -128,39 +128,6 @@ export default function CausalChain({ priorities, findings, onNext, priorCase })
         );
       })}
 
-      {/* Prior confirmed pattern reference — renders only when confirmed pattern exists */}
-      {priorCase && (
-        <div style={{
-          marginTop: 24,
-          background: '#111827',
-          border: '1px solid #1E3A5F',
-          borderRadius: 12,
-          padding: '14px 18px',
-        }}>
-          <div style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: 1.5,
-            color: '#94A3B8',
-            marginBottom: 6,
-          }}>
-            FROM DECISION MEMORY
-          </div>
-          <div style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#E2E8F0',
-            marginBottom: 4,
-          }}>
-            {priorCase.label}
-          </div>
-          {priorCase.count > 0 && (
-            <div style={{ fontSize: 12, color: '#94A3B8' }}>
-              Previously observed {priorCase.count} time{priorCase.count !== 1 ? 's' : ''} in this organisation
-            </div>
-          )}
-        </div>
-      )}
       {/* CTA */}
       <div style={{ marginTop: 32 }}>
         <button
