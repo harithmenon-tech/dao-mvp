@@ -17,6 +17,7 @@ import DataConnection from './components/DataConnection.jsx';
 import SituationQueue from './components/SituationQueue.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import CausalChain from './components/CausalChain.jsx';
+import OptionCards from './components/OptionCards.jsx';
 
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DECISION ACCOUNTABILITY OS â MVP
@@ -3699,7 +3700,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} />}
               />
           </Routes>
           </ShellFrame>
@@ -3773,7 +3774,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns }) {
+function StepRouter({ priorities, findings, patterns, situationSummary }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3792,5 +3793,13 @@ function StepRouter({ priorities, findings, patterns }) {
       />
     );
   }
-  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step — coming soon.</div>;
+  if (n === '3') {
+    return (
+      <OptionCards
+        situationSummary={situationSummary}
+        findings={findings || []}
+      />
+    );
+  }
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }
