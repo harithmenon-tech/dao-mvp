@@ -275,46 +275,145 @@ app.post('/api/situation', async (req, res) => {
     if (!findings || findings.length === 0) {
       return res.status(400).json({ error: 'No findings provided' });
     }
-    const findingSummary = findings.slice(0, 10).map((f, i) =>
-      `${i + 1}. [${f.severity || 'MEDIUM'}] ${f.title || f.finding || JSON.stringify(f)}`
-    ).join('\n');
-    const domainNote = domainContext
-      ? `\nDomain context: ${domainContext}`
-      : '';
-    const prompt = `You are a Chief Operating Officer advisor.
-Based on these ${scanType || 'operational'} scan findings, provide a situational assessment.${domainNote}
-FINDINGS:
-${findingSummary}
-Respond in this exact JSON format with no preamble or markdown:
-{
-  "situationSummary": "2-3 sentence overall situation assessment",
-  "urgencyLevel": "HIGH|MEDIUM|LOW",
-  "priorities": [
-    {
-      "rank": 1,
-      "title": "priority title",
-      "severity": "HIGH|MEDIUM|LOW",
-      "insight": "one sentence insight",
-      "action": "one sentence recommended action",
-      "timeframe": "immediate|this week|this month",
-      "impactValue": "short currency or value string for dominant display e.g. RM 2.4M or $340K",
-      "impactLabel": "short phrase max 5 words e.g. Estimated revenue at risk"
+    // -- STAGE 1: Select findings in code --
+    // Cap at maximum 3. Final priority count equals selectedFindings.length.
+    // No filler or invented priorities beyond what is selected here.
+    const selectedFindings = findings.slice(0, 3);
+    // -- STAGE 2: Derive all truth-bearing fields in code --
+    function deriveSeverity(tier) {
+      if (tier === 'Tier 1') return 'HIGH';
+      if (tier === 'Tier 2') return 'MEDIUM';
+      if (tier === 'Tier 3') return 'LOW';
+      return 'MEDIUM';
     }
-  ],
-  "chiefQuestion": "The single most important question the CEO should be asking right now"
-}
-Provide exactly 3 priorities. Return only valid JSON.`;
+    function deriveTimeframe(tier) {
+      if (tier === 'Tier 1') return 'immediate';
+      if (tier === 'Tier 2') return 'this week';
+      return 'this month';
+    }
+    function extractImpact(impactText) {
+      if (!impactText || typeof impactText !== 'string') {
+        return { impactValue: 'Non-financial', impactLabel: 'Operational impact identified' };
+      }
+      const currencyRe = /([£$€]|RM|USD|GBP|AUD|SGD|AED|MYR)\s?[\d,]+(?:\.\d+)?(?:[MKB])?(?:\s?[-\u2013]\s?[\d,]+(?:\.\d+)?(?:[MKB])?)?/i;
+      const match = impactText.match(currencyRe);
+      if (match) {
+        const impactValue = match[0].trim();
+        const remaining = impactText.replace(match[0], '').replace(/^[\s:,\-\u2013]+/, '').trim();
+        const impactLabel = remaining.split(/\s+/).slice(0, 5).join(' ') || 'Financial impact identified';
+        return { impactValue, impactLabel };
+      }
+      const cleaned = impactText.replace(/^Non-financial:\s*/i, '').trim();
+      const impactLabel = cleaned.split(/\s+/).slice(0, 5).join(' ') || 'Operational impact identified';
+      return { impactValue: 'Non-financial', impactLabel };
+    }
+    const groundedFields = selectedFindings.map((f, i) => ({
+      rank: i + 1,
+      severity: deriveSeverity(f.severity),
+      timeframe: deriveTimeframe(f.severity),
+      ...extractImpact(f.impact),
+    }));
+    const tiers = selectedFindings.map(f => f.severity || '');
+    const urgencyLevel = tiers.includes('Tier 1') ? 'HIGH'
+      : tiers.includes('Tier 2') ? 'MEDIUM'
+      : 'LOW';
+    // -- STAGE 2b: Deterministic fallbacks for summary fields --
+    // Used only if model returns empty or malformed output.
+    // Derived entirely from grounded source data — no invented facts.
+    const highestTier = tiers.includes('Tier 1') ? 'Tier 1'
+      : tiers.includes('Tier 2') ? 'Tier 2'
+      : 'Tier 3';
+    const f0 = selectedFindings[0] || {};
+    const f0TitleShort = (f0.title || 'operational finding').split(' ').slice(0, 6).join(' ');
+    const f0FixShort = (f0.fix || 'Review and address the highest-priority finding immediately.').split('.')[0] + '.';
+    const fallbackSituationSummary =
+      selectedFindings.length + ' ' + highestTier + ' finding' +
+      (selectedFindings.length > 1 ? 's' : '') +
+      ' identified affecting ' + f0TitleShort + '. ' +
+      'Immediate action required: ' + f0FixShort;
+    const fallbackChiefQuestion =
+      'What is the current status of response to the following: ' + f0FixShort;
+    // -- STAGE 3: Build reduced prompt using array join (no large template literal) --
+    const findingsForModel = selectedFindings.map((f, i) =>
+      'Finding ' + (i + 1) + ':\nTitle: ' + (f.title || '') +
+      '\nEvidence: ' + (f.evidence || '') +
+      '\nFix: ' + (f.fix || '')
+    ).join('\n\n');
+    const domainNote = domainContext ? '\nDomain context: ' + domainContext : '';
+    const languagePromptLines = [
+      'You are a Chief Operating Officer advisor.' + domainNote,
+      '',
+      'Based on these ' + (scanType || 'operational') + ' scan findings, generate language fields only.',
+      'Do not generate financial figures. Do not introduce facts not present in the findings.',
+      'Do not add priorities beyond the findings provided.',
+      '',
+      findingsForModel,
+      '',
+      'Return this exact JSON with no preamble or markdown:',
+      '{',
+      '  "languageItems": [',
+      '    {"findingNumber": 1, "title": "finding title abbreviated max 8 words same subject domain", "insight": "one sentence from this finding evidence only", "action": "one sentence from this finding fix field only"}',
+      '  ],',
+      '  "situationSummary": "Exactly 2 sentences. Sentence 1: state the number of findings, the highest severity tier present, and the primary system or domain affected. Sentence 2: state the most urgent action required derived from finding 1 fix field only. No financial figures. No new facts.",',
+      '  "chiefQuestion": "One question only about the action or timeline for finding 1. Do not reference financial figures. Do not reference findings other than finding 1."',
+      '}',
+      '',
+      'The languageItems array must contain exactly ' + selectedFindings.length + ' objects in the same order as the findings above.',
+    ];
+    const languagePrompt = languagePromptLines.join('\n');
+    // -- STAGE 4: Call model — bounded language generation only --
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
+      temperature: 0,
       system: 'You are a strategic business advisor. Always respond with valid JSON only.',
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: languagePrompt }]
     });
     const raw = response.content[0].text.trim();
     const clean = raw.replace(/```json|```/g, '').trim();
-    const assessment = JSON.parse(clean);
+    const modelOutput = JSON.parse(clean);
+    // -- STAGE 5: Guard and normalise model language array --
+    let languageItems = Array.isArray(modelOutput.languageItems)
+      ? modelOutput.languageItems
+      : [];
+    // Truncate any excess items the model may have returned
+    languageItems = languageItems.slice(0, selectedFindings.length);
+    // Fill any missing items with deterministic fallback from source findings
+    while (languageItems.length < selectedFindings.length) {
+      const idx = languageItems.length;
+      const fb = selectedFindings[idx];
+      languageItems.push({
+        findingNumber: idx + 1,
+        title: (fb.title || 'Untitled finding').split(' ').slice(0, 8).join(' '),
+        insight: (fb.evidence || 'See finding details.').split('.')[0] + '.',
+        action: fb.fix || 'Review and address this finding.',
+      });
+    }
+    // -- STAGE 6: Reconstruct final response deterministically --
+    const priorities = selectedFindings.map((f, i) => ({
+      rank:        groundedFields[i].rank,
+      title:       languageItems[i].title || (f.title || '').split(' ').slice(0, 8).join(' '),
+      severity:    groundedFields[i].severity,
+      insight:     languageItems[i].insight || '',
+      action:      languageItems[i].action || '',
+      timeframe:   groundedFields[i].timeframe,
+      impactValue: groundedFields[i].impactValue,
+      impactLabel: groundedFields[i].impactLabel,
+    }));
+    const situationSummary = (modelOutput.situationSummary && modelOutput.situationSummary.trim())
+      ? modelOutput.situationSummary
+      : fallbackSituationSummary;
+    const chiefQuestion = (modelOutput.chiefQuestion && modelOutput.chiefQuestion.trim())
+      ? modelOutput.chiefQuestion
+      : fallbackChiefQuestion;
+    const assessment = {
+      situationSummary,
+      urgencyLevel,
+      priorities,
+      chiefQuestion,
+    };
     const incomingScanId = req.body.scanId || null;
     console.log(`[DAO truth] /api/situation | ${new Date().toISOString()} | urgency: ${assessment.urgencyLevel || 'unknown'} | priorities: ${Array.isArray(assessment.priorities) ? assessment.priorities.length : 0} | scanId: ${incomingScanId || 'none'}`);
     res.json({ success: true, assessment, scanId: incomingScanId });
