@@ -3699,7 +3699,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} />}
               />
           </Routes>
           </ShellFrame>
@@ -3773,7 +3773,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings }) {
+function StepRouter({ priorities, findings, patterns }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3781,10 +3781,13 @@ function StepRouter({ priorities, findings }) {
     return <OpeningMoment priority={matched} />;
   }
   if (n === '2' && matched) {
+    const _confirmedPatterns = (patterns || []).filter(p => p.provisional !== true);
+    const priorCase = _confirmedPatterns.length > 0 ? _confirmedPatterns[0] : null;
     return (
       <CausalChain
         priorities={priorities}
         findings={findings || []}
+        priorCase={priorCase}
         onNext={() => navigate(`/situation/${id}/step/3`)}
       />
     );
