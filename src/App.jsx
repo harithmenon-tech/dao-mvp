@@ -1434,8 +1434,8 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(revenueScanResults || [], 'revenue');
-        fetchAndStoreAutoBrief(revenueScanResults || [], 'revenue');
+        fetchSituationAssessment(scanData.opportunities || [], 'revenue');
+        fetchAndStoreAutoBrief(scanData.opportunities || [], 'revenue');
         loadCommandCentreStats();
       } else {
         setScanResults(null);
@@ -1472,8 +1472,8 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(scanResults || [], 'operational');
-        fetchAndStoreAutoBrief(scanResults || [], 'operational');
+        fetchSituationAssessment(scanData.findings || [], 'operational');
+        fetchAndStoreAutoBrief(scanData.findings || [], 'operational');
         loadCommandCentreStats();
       }
     } catch (e) {
