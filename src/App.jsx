@@ -611,6 +611,16 @@ function transformScanJsonToText(raw) {
   }
   return raw;
 }
+
+function parseScanFindings(text, scanType) {
+  try {
+    const data = JSON.parse(text || '{}');
+    if (scanType === 'revenue') return Array.isArray(data.opportunities) ? data.opportunities : [];
+    return Array.isArray(data.findings) ? data.findings : [];
+  } catch {
+    return [];
+  }
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 function parseFindings(text) {
@@ -1467,8 +1477,8 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(scanData.opportunities || [], 'revenue');
-        fetchAndStoreAutoBrief(scanData.opportunities || [], 'revenue');
+        fetchSituationAssessment(parseScanFindings(scanData.text, 'revenue'), 'revenue');
+        fetchAndStoreAutoBrief(parseScanFindings(scanData.text, 'revenue'), 'revenue');
         loadCommandCentreStats();
       } else {
         setScanResults(null);
@@ -1505,8 +1515,8 @@ export default function App() {
           scanDatasets,
           findings?.length || 0
         );
-        fetchSituationAssessment(scanData.findings || [], 'operational');
-        fetchAndStoreAutoBrief(scanData.findings || [], 'operational');
+        fetchSituationAssessment(parseScanFindings(scanData.text, 'operational'), 'operational');
+        fetchAndStoreAutoBrief(parseScanFindings(scanData.text, 'operational'), 'operational');
         loadCommandCentreStats();
       }
     } catch (e) {
@@ -3112,7 +3122,7 @@ export default function App() {
 
           {/* ═══════ SCAN VIEW ═══════ */}
             <Route path="/situations" element={(() => {
-              const priorities = situationAssessment?.assessment?.priorities || [];
+              const priorities = situationAssessment?.priorities || [];
               return priorities.length >= 2
                 ? <SituationQueue priorities={priorities} />
                 : <EmptyState dataConnected={datasets.length > 0} onScan={runScan} />;
@@ -3646,7 +3656,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} />}
+                element={<StepRouter priorities={situationAssessment?.priorities || []} />}
               />
           </Routes>
           </ShellFrame>
