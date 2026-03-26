@@ -1092,6 +1092,8 @@ export default function App() {
     preloadVarianceForDueDecisions();
     const savedBrief = localStorage.getItem('dao-auto-brief');
     if (savedBrief) { try { setAutoBrief(JSON.parse(savedBrief)); } catch {} }
+    const savedSituation = store.get('dao-situation-assessment');
+    if (savedSituation && savedSituation.priorities) { setSituationAssessment(savedSituation); }
     loadCommandCentreStats();
   }, []);
 
@@ -1104,6 +1106,7 @@ export default function App() {
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
   useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
   useEffect(() => { if (revenueScanResults) store.set("dao-revenue-scan", revenueScanResults); }, [revenueScanResults]);
+  useEffect(() => { if (situationAssessment) store.set('dao-situation-assessment', situationAssessment); }, [situationAssessment]);
   useEffect(() => { store.set("dao-resolved-findings", resolvedFindings); }, [resolvedFindings]);
   useEffect(() => { store.set("dao-change-projects", changeProjects); }, [changeProjects]);
   useEffect(() => {
