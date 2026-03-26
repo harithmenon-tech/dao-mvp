@@ -1259,6 +1259,15 @@ export default function App() {
     for (const file of files) {
       try {
         const parsed = await parseFile(file);
+        const isValid = parsed.type === 'excel'
+          ? (parsed.totalRows > 0)
+          : parsed.type === 'csv'
+          ? (parsed.rowCount > 0)
+          : true;
+        if (!isValid) {
+          console.warn('[DAO] Skipping zero-row file — not admitted to datasets:', parsed.name);
+          continue;
+        }
         newDatasets.push(parsed);
         const record = createDatasetRecord(file, parsed);
         const suggestedDomain = classifySuggestDomain(record);
