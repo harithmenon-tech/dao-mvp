@@ -3781,10 +3781,13 @@ function StepRouter({ priorities, findings }) {
     return <OpeningMoment priority={matched} />;
   }
   if (n === '2' && matched) {
+    const _confirmedPatterns = (patterns || []).filter(p => p.provisional !== true);
+    const priorCase = _confirmedPatterns.length > 0 ? _confirmedPatterns[0] : null;
     return (
       <CausalChain
         priorities={priorities}
         findings={findings || []}
+        priorCase={priorCase}
         onNext={() => navigate(`/situation/${id}/step/3`)}
       />
     );
