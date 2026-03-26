@@ -947,6 +947,131 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+app.post('/api/options', async (req, res) => {
+  try {
+    const { situationSummary, scanFindings } = req.body;
+
+    if (!situationSummary || typeof situationSummary !== 'string' || situationSummary.trim().length === 0) {
+      return res.status(400).json({ error: 'situationSummary is required and must be a non-empty string' });
+    }
+    if (!scanFindings || !Array.isArray(scanFindings) || scanFindings.length === 0) {
+      return res.status(400).json({ error: 'scanFindings is required and must be a non-empty array' });
+    }
+
+    const findingsBlock = scanFindings
+      .map((f, i) => [
+        `Finding ${i + 1}:`,
+        `  Pattern: ${f.pattern || ''}`,
+        `  Evidence: ${f.evidence || ''}`,
+        `  Impact: ${f.impact || ''}`,
+        `  Tier: ${f.tier || ''}`,
+        `  Root Cause: ${f.rootCause || ''}`,
+      ].join('\n'))
+      .join('\n\n');
+
+    const VALID_LEVELS = ['Low', 'Medium', 'High'];
+    const REQUIRED_OPTION_KEYS = ['confidence', 'estimated_cost', 'label', 'rationale', 'risk_level'];
+    const GENERIC_OPENERS = [
+      'This option', 'This approach', 'This is a', 'This would',
+      'A balanced', 'An effective'
+    ];
+
+    const buildPrompt = () => `You are a strategic advisor to the CEO. Based on the situation and findings below, generate exactly 3 structured decision options.
+
+Situation:
+${situationSummary.trim()}
+
+Findings:
+${findingsBlock}
+
+Return ONLY a valid JSON object with no preamble, no explanation, no markdown, no extra fields. The object must match this exact shape:
+
+{
+  "options": [
+    {
+      "label": "short action title",
+      "estimated_cost": "short CEO-readable phrase, max 8 words, no paragraphs",
+      "risk_level": "Low|Medium|High",
+      "confidence": "Low|Medium|High",
+      "rationale": "1-2 short sentences referencing a specific pattern, evidence, impact or root cause from the supplied findings"
+    },
+    { "label": "...", "estimated_cost": "...", "risk_level": "Low|Medium|High", "confidence": "Low|Medium|High", "rationale": "..." },
+    { "label": "...", "estimated_cost": "...", "risk_level": "Low|Medium|High", "confidence": "Low|Medium|High", "rationale": "..." }
+  ],
+  "recommended_index": 0
+}
+
+Rules you must follow:
+- options array must contain exactly 3 objects
+- each option object must contain exactly these 5 keys and no others: label, estimated_cost, risk_level, confidence, rationale
+- risk_level must be exactly one of: Low, Medium, High
+- confidence must be exactly one of: Low, Medium, High
+- estimated_cost must be a short human-readable phrase only, no more than 8 words, no currency paragraphs, no markdown
+- rationale must be 1-2 short sentences and must reference at least one concrete signal from the supplied findings — a specific pattern, evidence point, impact figure, or root cause
+- do not begin any rationale with: "This option", "This approach", "This is a", "This would", "A balanced", "An effective"
+- recommended_index must be 0, 1, or 2 and must be the index of the option you assess as most appropriate
+- do not include any field outside the specified shape
+- return only the JSON object, nothing else`;
+
+    const validate = (parsed) => {
+      if (!parsed || !Array.isArray(parsed.options)) return false;
+      if (parsed.options.length !== 3) return false;
+      for (const opt of parsed.options) {
+        const keys = Object.keys(opt).sort();
+        if (keys.join(',') !== REQUIRED_OPTION_KEYS.join(',')) return false;
+        if (!opt.label || typeof opt.label !== 'string' || opt.label.trim().length === 0) return false;
+        if (!opt.estimated_cost || typeof opt.estimated_cost !== 'string' || opt.estimated_cost.trim().length === 0) return false;
+        if (opt.estimated_cost.trim().length > 60) return false;
+        if (!VALID_LEVELS.includes(opt.risk_level)) return false;
+        if (!VALID_LEVELS.includes(opt.confidence)) return false;
+        if (!opt.rationale || typeof opt.rationale !== 'string' || opt.rationale.trim().length < 40) return false;
+        if (GENERIC_OPENERS.some(opener => opt.rationale.trim().startsWith(opener))) return false;
+      }
+      if (typeof parsed.recommended_index !== 'number') return false;
+      if (!Number.isInteger(parsed.recommended_index)) return false;
+      if (parsed.recommended_index < 0 || parsed.recommended_index > 2) return false;
+      return true;
+    };
+
+    const attempt = async () => {
+      const response = await anthropic.messages.create({
+        model: 'claude-opus-4-5',
+        max_tokens: 1000,
+        temperature: 0,
+        system: 'You are a strategic executive advisor. Always respond with valid JSON only. No preamble. No markdown. No explanation.',
+        messages: [{ role: 'user', content: buildPrompt() }]
+      });
+      const raw = response.content[0].text.trim();
+      const clean = raw.replace(/```json|```/g, '').trim();
+      return JSON.parse(clean);
+    };
+
+    let parsed = null;
+    let lastError = null;
+
+    for (let i = 1; i <= 2; i++) {
+      try {
+        const result = await attempt();
+        if (validate(result)) {
+          return res.json(result);
+        }
+        console.error(`/api/options attempt ${i} schema invalid`);
+        lastError = 'Schema validation failed';
+      } catch (e) {
+        console.error(`/api/options attempt ${i} parse/call failed:`, e.message);
+        lastError = e.message;
+      }
+    }
+
+    return res.status(500).json({ error: 'Failed to generate valid options after 2 attempts — no fallback fabrication', detail: lastError });
+
+  } catch (err) {
+    console.error('/api/options error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   const key = getApiKey();
   console.log();
