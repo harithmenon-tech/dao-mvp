@@ -16,6 +16,7 @@ import WelcomeScreen from './components/WelcomeScreen.jsx';
 import DataConnection from './components/DataConnection.jsx';
 import SituationQueue from './components/SituationQueue.jsx';
 import EmptyState from './components/EmptyState.jsx';
+import CausalChain from './components/CausalChain.jsx';
 
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DECISION ACCOUNTABILITY OS â MVP
@@ -3698,7 +3699,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} />}
               />
           </Routes>
           </ShellFrame>
@@ -3772,11 +3773,21 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities }) {
+function StepRouter({ priorities, findings }) {
   const { id, n } = useParams();
+  const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
   if (n === '1' && matched) {
     return <OpeningMoment priority={matched} />;
   }
-  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step â coming soon.</div>;
+  if (n === '2' && matched) {
+    return (
+      <CausalChain
+        priorities={priorities}
+        findings={findings || []}
+        onNext={() => navigate(`/situation/${id}/step/3`)}
+      />
+    );
+  }
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step — coming soon.</div>;
 }
