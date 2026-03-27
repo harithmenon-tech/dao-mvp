@@ -19,6 +19,7 @@ import EmptyState from './components/EmptyState.jsx';
 import CausalChain from './components/CausalChain.jsx';
 import OptionCards from './components/OptionCards.jsx';
 import Confirm from './components/Confirm.jsx';
+import ConfirmSuccess from './components/ConfirmSuccess.jsx';
 
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DECISION ACCOUNTABILITY OS â MVP
@@ -3824,5 +3825,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
       />
     );
   }
+  if (n === '5') { return <ConfirmSuccess />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }
