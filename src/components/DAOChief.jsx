@@ -89,6 +89,10 @@ export default function DAOChief({
   generateMsgId,
   detectDecisionInMessage,
   handleLogDecisionFromChat,
+  currentStep = null,
+  currentStepLabel = null,
+  situationSummary = '',
+  selectedOption = null,
 }) {
   // ── Section D — Local state (preserve exact names from App.jsx) ──────────
   const [chatMsgs, setChatMsgs] = useState(
@@ -185,7 +189,14 @@ export default function DAOChief({
         scanType: scanMode,
         domain: activeDomain,
         scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-        dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
+        dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
+        stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
+        situationSummary: situationSummary || null,
+        selectedOption: selectedOption ? {
+          label: selectedOption.label || '',
+          rationale: selectedOption.rationale || '',
+          risk_level: selectedOption.risk_level || ''
+        } : null,
       } : null;
 
       const chiefRes = await fetch('/api/chief', {
@@ -229,7 +240,14 @@ export default function DAOChief({
       scanType: scanMode,
       domain: activeDomain,
       scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-      dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
+      dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
+      stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
+      situationSummary: situationSummary || null,
+      selectedOption: selectedOption ? {
+        label: selectedOption.label || '',
+        rationale: selectedOption.rationale || '',
+        risk_level: selectedOption.risk_level || ''
+      } : null,
     } : null;
     try {
       const chiefRes = await fetch('/api/chief', {
@@ -274,7 +292,14 @@ export default function DAOChief({
         scanType: scanMode,
         domain: activeDomain,
         scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-        dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
+        dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
+        stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
+        situationSummary: situationSummary || null,
+        selectedOption: selectedOption ? {
+          label: selectedOption.label || '',
+          rationale: selectedOption.rationale || '',
+          risk_level: selectedOption.risk_level || ''
+        } : null,
       } : null;
       const chiefRes = await fetch('/api/chief', {
         method: 'POST',

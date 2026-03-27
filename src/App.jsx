@@ -2274,6 +2274,8 @@ export default function App() {
           <ShellFrame
             domainLabel={domainConfig.label}
             situationTitle=""
+            situationSummary={situationAssessment?.assessment?.situationSummary || ''}
+            selectedOption={selectedOption}
             apiStatus={apiStatus}
             parsedFindings={parsedFindings}
             resolvedFindings={resolvedFindings}

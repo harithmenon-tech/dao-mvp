@@ -839,6 +839,9 @@ function buildContextBlock(ctx) {
     if (ctx.scanType) lines.push(`Scan type: ${ctx.scanType}`);
     if (ctx.domain) lines.push(`Domain: ${ctx.domain}`);
     if (ctx.totalExposure) lines.push(`Total financial exposure identified: ${ctx.totalExposure}`);
+    if (ctx.stepContext) lines.push(`Current step: Step ${ctx.stepContext.step} — ${ctx.stepContext.stepLabel || ''}`);
+    if (ctx.situationSummary) lines.push(`Situation: ${ctx.situationSummary}`);
+    if (ctx.selectedOption) lines.push(`Decision chosen: ${ctx.selectedOption.label} (Risk: ${ctx.selectedOption.risk_level}) — Rationale: ${ctx.selectedOption.rationale}`);
     if (Array.isArray(ctx.findings) && ctx.findings.length > 0) {
       lines.push('Findings:');
       ctx.findings.slice(0, 3).forEach((f, i) => {
@@ -895,6 +898,8 @@ Before writing your final answer, classify the user's request into one of three 
 - TACTICAL / SINGLE-ISSUE: answer in 3–5 sentences maximum. Be direct and specific.
 - STRATEGIC / MULTI-FACTOR / ANALYSIS: answer in up to 3 short paragraphs. Be concise. No redundancy. No long lists unless the request explicitly requires enumeration.
 Do not state which type you selected. Apply the rule silently.
+
+If current step, situation, or selected option context is provided, ground your advice in that exact point of the CEO decision flow. Be specific about the situation at hand, the stage the CEO is in, and the chosen option if one exists. If no step-aware context is present, respond using the available scan context only.
 
 After completing all four steps, output your final answer using this exact format:
 RESPONSE:

@@ -33,6 +33,8 @@ export default function ShellFrame({
   generateMsgId,
   detectDecisionInMessage,
   handleLogDecisionFromChat,
+  situationSummary,
+  selectedOption,
 }) {
   const { pathname } = useLocation();
 
@@ -162,6 +164,10 @@ export default function ShellFrame({
         generateMsgId={generateMsgId}
         detectDecisionInMessage={detectDecisionInMessage}
         handleLogDecisionFromChat={handleLogDecisionFromChat}
+        currentStep={safeStep}
+        currentStepLabel={safeStep ? (STEP_LABELS[safeStep] || `Step ${safeStep}`) : null}
+        situationSummary={situationSummary}
+        selectedOption={selectedOption}
       />
     </div>
   );
