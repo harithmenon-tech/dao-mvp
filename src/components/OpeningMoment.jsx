@@ -28,7 +28,7 @@ function severityColor(severity) {
     default:       return TEXT_DIM;
   }
 }
-export default function OpeningMoment({ priority }) {
+export default function OpeningMoment({ priority, onNext }) {
   if (!priority) {
     return (
       <div style={{ padding: 24, color: TEXT_DIM, fontSize: 14 }}>
@@ -145,7 +145,7 @@ export default function OpeningMoment({ priority }) {
       </div>
       {/* ── CTA — inert at T-S1.1, navigation wired at T-S2.1 ── */}
       <button
-        disabled
+        onClick={onNext}
         style={{
           background: ACCENT,
           color: '#fff',
@@ -154,8 +154,7 @@ export default function OpeningMoment({ priority }) {
           padding: '12px 24px',
           fontSize: 14,
           fontWeight: 600,
-          cursor: 'not-allowed',
-          opacity: 0.5,
+          cursor: 'pointer',
         }}
       >
         Understand this situation →
