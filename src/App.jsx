@@ -902,7 +902,7 @@ function PatternMemoryPanel({ patterns }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>ðŸ§ </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>Pattern Memory</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#e0e0ff" }}>Past patterns</span>
           <span style={{ fontSize: 11, background: "#2a2a5a", color: "#8888ff",
             border: "1px solid #4a4a8a", borderRadius: 10, padding: "2px 8px" }}>
             {patterns.length}
@@ -1732,12 +1732,10 @@ export default function App() {
   // T-S4.1 — Step 3 → Step 4 option selection handler
   function handleOptionSelect(option) {
     setSelectedOption(option);
-    navigate(`/situation/${singleSituationId}/step/4`);
   }
   // T-S4.1 — Step 4 confirm handler: appends to journal, advances to Step 5
   function handleConfirm(entry) {
     setJournal(prev => [...prev, entry]);
-    navigate(`/situation/${singleSituationId}/step/5`);
   }
 
   // T-S6.1 — Step 6 review submit handler: writes outcome + lesson to the single
@@ -2566,7 +2564,7 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: TEXT, cursor: "pointer" }} onClick={() => setShowRiskRadar(v => !v)}>
-                      ðŸ¯ Decision Risk Radar
+                      Risk signals
                     </span>
                     {riskRadar.length > 0 && (
                       <span style={{ background: `${RED}30`, color: RED, fontSize: 11, fontWeight: 700, borderRadius: 10, padding: "2px 8px" }}>
@@ -3467,8 +3465,24 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
-  if (n === '1' && matched) {
-    return <OpeningMoment priority={matched} />;
+  if (n === '1') {
+    if (!priorities?.length) {
+      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
+    }
+
+    const priority =
+      matched || (String(id) === '1' ? priorities[0] : null);
+
+    if (!priority) {
+      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
+    }
+
+    return (
+      <OpeningMoment
+        priority={priority}
+        onNext={() => navigate(`/situation/${id}/step/2`)}
+      />
+    );
   }
   if (n === '2' && matched) {
     const _confirmedPatterns = (patterns || []).filter(p => p.provisional !== true);
@@ -3487,7 +3501,10 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
       <OptionCards
         situationSummary={situationSummary}
         findings={findings || []}
-        onOptionSelect={onOptionSelect}
+        onOptionSelect={(option) => {
+          onOptionSelect(option);
+          navigate(`/situation/${id}/step/4`);
+        }}
       />
     );
   }
@@ -3496,11 +3513,14 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
       <Confirm
         selectedOption={selectedOption}
         situationSummary={situationSummary}
-        onConfirm={onConfirm}
+        onConfirm={(entry) => {
+          onConfirm(entry)
+          navigate(`/situation/${id}/step/5`)
+        }}
       />
     );
   }
-  if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} />; }
+  if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
   if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
