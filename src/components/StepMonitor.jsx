@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import MonitorGauge from './MonitorGauge.jsx';
+import InterventionTimeline from './InterventionTimeline.jsx';
 
 export default function StepMonitor({
   selectedOption,
@@ -61,6 +62,11 @@ export default function StepMonitor({
       ? situationSummary
       : 'Decision under active monitoring';
 
+  const confirmedEntry = Array.isArray(journal)
+    ? [...journal].reverse().find(e => e.status === 'Confirmed')
+    : null;
+  const decisionDate = confirmedEntry ? confirmedEntry.date : null;
+
   return (
     <div
       style={{
@@ -118,6 +124,7 @@ export default function StepMonitor({
           ))}
         </div>
       )}
+      <InterventionTimeline decisionDate={decisionDate} />
     </div>
   );
 }
