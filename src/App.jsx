@@ -1104,6 +1104,10 @@ export default function App() {
         setSituationAssessment({ assessment: savedSituation, scanId: null, assessedAt: null });
       }
     }
+    const savedDatasetsMeta = store.get('dao-datasets-meta');
+    if (Array.isArray(savedDatasetsMeta) && savedDatasetsMeta.length > 0) {
+      setDatasets(savedDatasetsMeta);
+    }
     loadCommandCentreStats();
   }, []);
 
