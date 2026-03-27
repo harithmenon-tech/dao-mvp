@@ -11,6 +11,7 @@ import { createDatasetRecord, classifySuggestDomain, saveDatasetRegistry, loadDa
 import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRouter.js';
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 import ShellFrame from './components/ShellFrame.jsx';
+import StepMonitor from './components/StepMonitor.jsx';
 import OpeningMoment from './components/OpeningMoment.jsx';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
 import DataConnection from './components/DataConnection.jsx';
@@ -3714,7 +3715,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} journal={journal} activeDomain={activeDomain} />}
               />
           </Routes>
           </ShellFrame>
@@ -3788,7 +3789,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, journal, activeDomain }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3825,6 +3826,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
       />
     );
   }
-  if (n === '5') { return <ConfirmSuccess />; }
+  if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }
