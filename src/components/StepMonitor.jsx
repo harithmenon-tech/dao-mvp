@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import MonitorGauge from './MonitorGauge.jsx';
 import InterventionTimeline from './InterventionTimeline.jsx';
 
@@ -9,6 +10,8 @@ export default function StepMonitor({
   findings,
   activeDomain,
 }) {
+  const navigate = useNavigate();
+  const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [results, setResults] = useState([]);
@@ -125,6 +128,25 @@ export default function StepMonitor({
         </div>
       )}
       <InterventionTimeline decisionDate={decisionDate} />
+      {/* T-S6.1 — Step 5 → Step 6 enabling CTA */}
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #1E3A5F' }}>
+        <button
+          onClick={() => navigate(`/situation/${id}/step/6`)}
+          style={{
+            background: '#0EA5E9',
+            color: '#0B1120',
+            border: 'none',
+            borderRadius: 8,
+            padding: '12px 28px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Review outcome
+        </button>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { getIncludedDatasets, buildValidationReport } from './core/scan/scanRout
 import { DOMAINS, getDomain, DEFAULT_DOMAIN } from './domainConfig';
 import ShellFrame from './components/ShellFrame.jsx';
 import StepMonitor from './components/StepMonitor.jsx';
+import Review from './components/Review.jsx';
 import OpeningMoment from './components/OpeningMoment.jsx';
 import WelcomeScreen from './components/WelcomeScreen.jsx';
 import DataConnection from './components/DataConnection.jsx';
@@ -1875,6 +1876,31 @@ export default function App() {
     navigate(`/situation/${singleSituationId}/step/5`);
   }
 
+  // T-S6.1 — Step 6 review submit handler: writes outcome + lesson to the single
+  // latest Confirmed entry only, refreshes patterns, advances to Step 7.
+  function handleReviewSubmit(reviewEntry) {
+    setJournal(prev => {
+      // Identify the single target: the last entry in the array with status === 'Confirmed'.
+      // All other entries — including earlier Confirmed entries — are returned untouched.
+      let targetFound = false;
+      const updated = [...prev].reverse().map(e => {
+        if (!targetFound && e.status === 'Confirmed') {
+          targetFound = true;
+          const reviews = [...(e.reviews ?? []), reviewEntry];
+          return { ...e, reviews, status: 'Reviewed', lifecycleStatus: 'Monitoring' };
+        }
+        return e;
+      }).reverse();
+
+      saveJournal(updated);
+      const refreshedPatterns = detectPatterns(updated);
+      setPatterns(refreshedPatterns);
+      savePatterns(refreshedPatterns);
+      return updated;
+    });
+    navigate(`/situation/${singleSituationId}/step/7`);
+  }
+
   const handleLogDecisionFromChat = (msgIndex) => {
     const extracted = extractDecisionFromConversation(msgIndex);
     setJf(extracted);
@@ -3715,7 +3741,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} journal={journal} activeDomain={activeDomain} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} />}
               />
           </Routes>
           </ShellFrame>
@@ -3789,7 +3815,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, journal, activeDomain }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3827,5 +3853,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
     );
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} />; }
+  if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }
