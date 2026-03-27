@@ -191,7 +191,7 @@ export default function DAOChief({
         scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
         dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
         stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
-        situationSummary: situationSummary || null,
+        situationSummary: situationSummary ? situationSummary.trim().slice(0, 500) : null,
         selectedOption: selectedOption ? {
           label: selectedOption.label || '',
           rationale: selectedOption.rationale || '',
@@ -242,7 +242,7 @@ export default function DAOChief({
       scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
       dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
       stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
-      situationSummary: situationSummary || null,
+      situationSummary: situationSummary ? situationSummary.trim().slice(0, 500) : null,
       selectedOption: selectedOption ? {
         label: selectedOption.label || '',
         rationale: selectedOption.rationale || '',
@@ -294,7 +294,7 @@ export default function DAOChief({
         scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
         dataSummary: localStorage.getItem('dao-uploaded-summary') || '',
         stepContext: currentStep ? { step: currentStep, stepLabel: currentStepLabel || null } : null,
-        situationSummary: situationSummary || null,
+        situationSummary: situationSummary ? situationSummary.trim().slice(0, 500) : null,
         selectedOption: selectedOption ? {
           label: selectedOption.label || '',
           rationale: selectedOption.rationale || '',
