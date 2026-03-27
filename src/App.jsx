@@ -22,6 +22,7 @@ import CausalChain from './components/CausalChain.jsx';
 import OptionCards from './components/OptionCards.jsx';
 import Confirm from './components/Confirm.jsx';
 import ConfirmSuccess from './components/ConfirmSuccess.jsx';
+import BoardReportNarrative from './components/BoardReportNarrative';
 
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DECISION ACCOUNTABILITY OS â MVP
@@ -3978,6 +3979,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
-  if (n === '7') { return <StepBoardReportTrigger journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} />; }
+  if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }
