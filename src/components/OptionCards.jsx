@@ -24,7 +24,7 @@ function riskColor(level) {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function OptionCards({ situationSummary, findings }) {
+export default function OptionCards({ situationSummary, findings, onOptionSelect }) {
   const [options, setOptions]               = useState(null);
   const [recommendedIndex, setRecommended]  = useState(0);
   const [loading, setLoading]               = useState(true);
@@ -202,7 +202,7 @@ export default function OptionCards({ situationSummary, findings }) {
 
             {/* Choose button — presentation only, T-S4.1 owns wiring */}
             <button
-              disabled
+              onClick={() => onOptionSelect && onOptionSelect(option)}
               style={{
                 background: isRecommended ? `${ACCENT}20` : 'transparent',
                 color: isRecommended ? ACCENT : TEXT_DIM,
@@ -211,8 +211,7 @@ export default function OptionCards({ situationSummary, findings }) {
                 padding: '8px 18px',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: 'not-allowed',
-                opacity: 0.7,
+                cursor: 'pointer',
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >

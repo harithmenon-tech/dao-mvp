@@ -18,6 +18,7 @@ import SituationQueue from './components/SituationQueue.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import CausalChain from './components/CausalChain.jsx';
 import OptionCards from './components/OptionCards.jsx';
+import Confirm from './components/Confirm.jsx';
 
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // DECISION ACCOUNTABILITY OS â MVP
@@ -967,6 +968,7 @@ export default function App() {
   const [sideOpen, setSideOpen] = useState(false);
   const [datasets, setDatasets] = useState([]);
   const [journal, setJournal] = useState([]);
+  const [selectedOption, setSelectedOption] = useState(null);
   const [chatMsgs, setChatMsgs] = useState(JSON.parse(localStorage.getItem('dao-chief-history') || '[]'));
   const [scanResults, setScanResults] = useState(null);
   const [scanning, setScanning] = useState(false);
@@ -1859,6 +1861,17 @@ export default function App() {
       reviewDays: 30
     };
   };
+
+  // T-S4.1 — Step 3 → Step 4 option selection handler
+  function handleOptionSelect(option) {
+    setSelectedOption(option);
+    navigate(`/situation/${singleSituationId}/step/4`);
+  }
+  // T-S4.1 — Step 4 confirm handler: appends to journal, advances to Step 5
+  function handleConfirm(entry) {
+    setJournal(prev => [...prev, entry]);
+    navigate(`/situation/${singleSituationId}/step/5`);
+  }
 
   const handleLogDecisionFromChat = (msgIndex) => {
     const extracted = extractDecisionFromConversation(msgIndex);
@@ -3700,7 +3713,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} />}
               />
           </Routes>
           </ShellFrame>
@@ -3774,7 +3787,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3798,6 +3811,16 @@ function StepRouter({ priorities, findings, patterns, situationSummary }) {
       <OptionCards
         situationSummary={situationSummary}
         findings={findings || []}
+        onOptionSelect={onOptionSelect}
+      />
+    );
+  }
+  if (n === '4') {
+    return (
+      <Confirm
+        selectedOption={selectedOption}
+        situationSummary={situationSummary}
+        onConfirm={onConfirm}
       />
     );
   }
