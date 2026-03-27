@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import DAOChief from './DAOChief.jsx';
 
 // ─── T-S0.2 local constants ───────────────────────────────────────────────────
 const TOTAL_STEPS = 7;
@@ -17,7 +18,22 @@ const STEP_LABELS = {
 const STEP_ROUTE_RE = /^\/situation\/[^/]+\/step\/(\d+)$/;
 
 // ─── ShellFrame ───────────────────────────────────────────────────────────────
-export default function ShellFrame({ children, domainLabel, situationTitle }) {
+export default function ShellFrame({
+  children,
+  domainLabel,
+  situationTitle,
+  apiStatus,
+  parsedFindings,
+  resolvedFindings,
+  scanMode,
+  activeDomain,
+  scanResults,
+  revenueScanResults,
+  handleChatFiles,
+  generateMsgId,
+  detectDecisionInMessage,
+  handleLogDecisionFromChat,
+}) {
   const { pathname } = useLocation();
 
   const match = STEP_ROUTE_RE.exec(pathname);
@@ -134,6 +150,19 @@ export default function ShellFrame({ children, domainLabel, situationTitle }) {
       <div style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
         {children}
       </div>
+      <DAOChief
+        apiStatus={apiStatus}
+        parsedFindings={parsedFindings}
+        resolvedFindings={resolvedFindings}
+        scanMode={scanMode}
+        activeDomain={activeDomain}
+        scanResults={scanResults}
+        revenueScanResults={revenueScanResults}
+        handleChatFiles={handleChatFiles}
+        generateMsgId={generateMsgId}
+        detectDecisionInMessage={detectDecisionInMessage}
+        handleLogDecisionFromChat={handleLogDecisionFromChat}
+      />
     </div>
   );
 }

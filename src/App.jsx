@@ -973,18 +973,11 @@ export default function App() {
   const [datasets, setDatasets] = useState([]);
   const [journal, setJournal] = useState([]);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [chatMsgs, setChatMsgs] = useState(JSON.parse(localStorage.getItem('dao-chief-history') || '[]'));
   const [scanResults, setScanResults] = useState(null);
   const [scanning, setScanning] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [micState, setMicState] = useState("idle"); // "idle" | "listening" | "error"
-  const [streaming, setStreaming] = useState(false);
-  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
   const [onboardStep, setOnboardStep] = useState(0);
   const [ob, setOb] = useState({ name: "", org: "", industry: "", region: "asean", style: "" });
-  const chatEnd = useRef(null);
   const fileRef = useRef(null);
-  const chatFileRef = useRef(null);
   const [showJournalForm, setShowJournalForm] = useState(false);
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [challengePending, setChallengePending] = useState(null);
@@ -998,7 +991,6 @@ export default function App() {
 
   // API status: "checking" | "live" | "demo" | "error"
   const [apiStatus, setApiStatus] = useState("checking");
-  const [chatFiles, setChatFiles] = useState([]);
   const [resolvedFindings, setResolvedFindings] = useState(store.get("dao-resolved-findings") || []);
   const [parsedFindings, setParsedFindings] = useState([]);
   const [scanMode, setScanMode] = useState("operational");
@@ -1096,7 +1088,6 @@ export default function App() {
     if (j) setJournal(j);
     if (d) setDatasets(d);
     if (s) setScanResults(s);
-    if (c) setChatMsgs(c);
     setLoading(false);
     preloadVarianceForDueDecisions();
     const savedBrief = localStorage.getItem('dao-auto-brief');
@@ -1119,8 +1110,6 @@ export default function App() {
   // Persist
   useEffect(() => { if (journal.length) store.set("dao-journal", journal);
     if (journal.length > 0) { checkDecisionHealth(); } }, [journal]);
-  useEffect(() => { if (chatMsgs.length) store.set("dao-chat", chatMsgs); }, [chatMsgs]);
-  useEffect(() => { localStorage.setItem('dao-chief-history', JSON.stringify(chatMsgs)); }, [chatMsgs]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
   useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
@@ -1150,13 +1139,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('dao-active-domain', activeDomain);
   }, [activeDomain]);
-  useEffect(() => {
-    if (location.pathname === "/board") {
-      setChatInput("Draft a board narrative for the current situation.");
-      navigate("/chat", { replace: true });
-    }
-  }, [location.pathname]);
-
   const addChangeProject = () => {
     if (!cf.name) return;
     const project = {
@@ -1211,7 +1193,6 @@ export default function App() {
   }, [datasets]);
 
   // Auto-scroll chat
-  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs, streaming]);
   useEffect(() => {
   const domainConfig = getDomain(activeDomain);
   console.log('[DAO] Active domain:', domainConfig.id, '(' + domainConfig.label + ')');
@@ -1240,7 +1221,7 @@ export default function App() {
     localStorage.setItem('dao-active-domain', isWater ? 'water' : 'generic');
     setActiveDomain(isWater ? 'water' : 'generic');
     const modeLabel = apiStatus === "live" ? "Live AI" : "Demo";
-    setChatMsgs([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers â no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data â drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]);
+    localStorage.setItem('dao-chief-history', JSON.stringify([{ role: "assistant", content: `Welcome, ${p.name}. I'm your Decision Accountability OS. [${modeLabel} Mode]\n\nI've configured for ${p.style === "direct" ? "Direct" : p.style === "solution" ? "Solution-First" : "Balanced"} communication. I'll ${p.style === "direct" ? "lead with problems and numbers â no softening" : p.style === "solution" ? "lead with recommendations, then show you why" : "present options with trade-offs and my recommendation"}.\n\n${datasets.length > 0 ? `I can see ${datasets.length} data source(s) connected. Say "Run Enterprise Scan" or ask me anything about your operations.` : "To get started, upload your data â drop Excel files, CSVs, or documents right here in chat or use the Data tab. Then I can run an Enterprise Scan to find patterns your team may have missed."}\n\nWhat would you like to explore?` }]));
   };
 
   if (loading) return (
@@ -1672,133 +1653,10 @@ export default function App() {
     localStorage.setItem('dao-scan-schedule', JSON.stringify(updated));
   }
 
-  // âââââââââââ CHAT âââââââââââ
-  const handleMic = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setMicState("error"); return; }
-    const r = new SR();
-    r.continuous = false;
-    r.interimResults = false;
-    r.onstart = () => setMicState("listening");
-    r.onend = () => setMicState("idle");
-    r.onerror = () => setMicState("error");
-    r.onresult = (e) => {
-      setChatInput(prev => prev + e.results[0][0].transcript);
-      setMicState("idle");
-    };
-    r.start();
-  };
 
   const generateMsgId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-  const sendMessage = async () => {
-    if (!chatInput.trim() && chatFiles.length === 0) return;
-    if (streaming) return;
 
-    const userMsg = chatInput.trim();
-    setChatInput("");
-
-    // Build message content including any attached files
-    let fullContent = userMsg;
-    const attachedFileNames = chatFiles.map(f => f.name);
-
-    if (chatFiles.length > 0) {
-      const fileSummary = summarizeData(chatFiles);
-      fullContent = userMsg
-        ? `${userMsg}\n\n[ATTACHED FILES]\n${fileSummary}`
-        : `Please analyse the following uploaded data:\n\n[ATTACHED FILES]\n${fileSummary}`;
-    }
-
-    // Show user message with file attachments
-    const displayContent = attachedFileNames.length > 0
-      ? `${userMsg || "Analyse these files"}${attachedFileNames.map(n => `\nðŸ ${n}`).join("")}`
-      : userMsg;
-
-    const newMsgs = [...chatMsgs, { role: "user", content: displayContent, msgId: generateMsgId() }];
-    setChatMsgs(newMsgs);
-    setChatFiles([]); // Clear attached files
-    setStreaming(true);
-
-    try {
-      const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
-      const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
-      const totalExposureStr = totalExposureAmount > 0
-        ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
-        : null;
-      const chiefContext = parsedFindings.length > 0 ? {
-        findings: parsedFindings.slice(0, 3).map(f => ({
-          title: f.pattern || '',
-          severity: f.tier || '',
-          impact: f.impact || '',
-          evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
-          fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
-        })),
-        totalExposure: totalExposureStr,
-        scanType: scanMode,
-        domain: activeDomain,
-        scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-        dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
-      } : null;
-
-      const chiefRes = await fetch('/api/chief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: fullContent, chiefContext })
-      });
-      const chiefData = await chiefRes.json();
-      const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
-      const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
-      const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-      const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-      setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
-      setStreaming(false);
-      return;
-    } catch (e) {
-      setChatMsgs(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: userMsg, msgId: generateMsgId() }]);
-    }
-    setStreaming(false);
-  };
-
-  const retryChiefMessage = async (targetMsgId, retryQuery) => {
-    if (streaming) return;
-    const snapshot = chatMsgs.filter(m => m.msgId !== targetMsgId);
-    setStreaming(true);
-    const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
-    const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
-    const totalExposureStr = totalExposureAmount > 0
-      ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
-      : null;
-    const chiefContext = parsedFindings.length > 0 ? {
-      findings: parsedFindings.slice(0, 3).map(f => ({
-        title: f.pattern || '',
-        severity: f.tier || '',
-        impact: f.impact || '',
-        evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
-        fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
-      })),
-      totalExposure: totalExposureStr,
-      scanType: scanMode,
-      domain: activeDomain,
-      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-      dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
-    } : null;
-    try {
-      const chiefRes = await fetch('/api/chief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: retryQuery, chiefContext })
-      });
-      const chiefData = await chiefRes.json();
-      const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
-      const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
-      const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-      const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-      setChatMsgs([...snapshot, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
-    } catch (e) {
-      setChatMsgs([...snapshot, { role: 'assistant', content: 'Something went wrong. Please try again.', confidence: null, failed: true, retryQuery, msgId: generateMsgId() }]);
-    }
-    setStreaming(false);
-  };
 
   // âââââââââââ AUTO-LOG DECISION DETECTION âââââââââââ
   const detectDecisionInMessage = (content) => {
@@ -1816,8 +1674,9 @@ export default function App() {
   };
 
   const extractDecisionFromConversation = (msgIndex) => {
-    const aiMsg = chatMsgs[msgIndex];
-    const userMsg = msgIndex > 0 ? chatMsgs[msgIndex - 1] : null;
+    const _chatMsgs = JSON.parse(localStorage.getItem('dao-chief-history') || '[]');
+    const aiMsg = _chatMsgs[msgIndex];
+    const userMsg = msgIndex > 0 ? _chatMsgs[msgIndex - 1] : null;
 
     // Try to extract decision statement from AI response
     let statement = "";
@@ -2199,7 +2058,8 @@ export default function App() {
     setJournal([]);
     setDatasets([]);
     setScanResults(null);
-    setChatMsgs([]);
+    localStorage.removeItem('dao-chief-history');
+    localStorage.removeItem('dao-chat');
     setOnboardStep(0);
     setOb({ name: "", org: "", industry: "", region: "asean", style: "" });
     store.del("dao-resolved-findings");
@@ -2411,369 +2271,26 @@ export default function App() {
 
         {/* MAIN CONTENT */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <ShellFrame domainLabel={domainConfig.label} situationTitle="">
+          <ShellFrame
+            domainLabel={domainConfig.label}
+            situationTitle=""
+            apiStatus={apiStatus}
+            parsedFindings={parsedFindings}
+            resolvedFindings={resolvedFindings}
+            scanMode={scanMode}
+            activeDomain={activeDomain}
+            scanResults={scanResults}
+            revenueScanResults={revenueScanResults}
+            handleChatFiles={handleChatFiles}
+            generateMsgId={generateMsgId}
+            detectDecisionInMessage={detectDecisionInMessage}
+            handleLogDecisionFromChat={handleLogDecisionFromChat}
+          >
           <Routes>
             <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
-            <Route path="/board" element={<Navigate to="/chat" replace />} />
+            <Route path="/board" element={<Navigate to="/" replace />} />
 
-          {/* âââââââ CHAT VIEW âââââââ */}
-            <Route path="/chat" element={(
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              {/* Chat sub-header: Chief Status + Clear History */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 16px", borderBottom: `1px solid ${BORDER}20` }}>
-                {/* Chief Status Indicator */}
-                <div title={apiStatus === 'live' ? "Chief Ready: the AI assistant is connected and ready to support decision reviews." : undefined} style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 500, color: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : TEXT_DIM }}>
-                  <span style={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    marginRight: 6,
-                    background: apiStatus === 'live' ? GREEN : apiStatus === 'demo' ? AMBER : "#6B7280"
-                  }}/>
-                  {apiStatus === 'live' ? 'Chief Ready' : apiStatus === 'demo' ? 'Demo Mode' : 'Checking...'}
-                </div>
-                {/* Clear History button / inline confirm */}
-                {chatMsgs.length > 0 && !confirmClearHistory && (
-                  <button
-                    onClick={() => setConfirmClearHistory(true)}
-                    style={{
-                      fontSize: 11,
-                      color: TEXT_DIM,
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      fontFamily: "'DM Sans', sans-serif",
-                      transition: "color 0.15s"
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.color = RED; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = TEXT_DIM; }}
-                    title="Clear chat history"
-                  >
-                    ðŸ Clear History
-                  </button>
-                )}
-                {confirmClearHistory && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'DM Sans', sans-serif" }}>Clear all history?</span>
-                    <button
-                      onClick={() => {
-                        setChatMsgs([]);
-                        localStorage.removeItem('dao-chief-history');
-                        store.del('dao-chat');
-                        setConfirmClearHistory(false);
-                      }}
-                      style={{
-                        fontSize: 11,
-                        color: RED,
-                        background: "none",
-                        border: `1px solid ${RED}60`,
-                        cursor: "pointer",
-                        padding: "3px 8px",
-                        borderRadius: 6,
-                        fontFamily: "'DM Sans', sans-serif"
-                      }}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => setConfirmClearHistory(false)}
-                      style={{
-                        fontSize: 11,
-                        color: TEXT_DIM,
-                        background: "none",
-                        border: `1px solid ${BORDER}`,
-                        cursor: "pointer",
-                        padding: "3px 8px",
-                        borderRadius: 6,
-                        fontFamily: "'DM Sans', sans-serif"
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 100px" }}>
-                {chatMsgs.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>&#127919;</div>
-                    <h2 style={{ fontSize: 20, fontWeight: 600, color: TEXT, margin: "0 0 8px" }}>Your Command Centre is Ready</h2>
-                    <p style={{ fontSize: 14, maxWidth: 400, margin: "0 auto" }}>
-                      {datasets.length > 0
-                        ? `${datasets.length} data source(s) connected. Ask me anything or run an Enterprise Scan.`
-                        : "Drop a file below or type a question to get started."}
-                    </p>
-                    {apiStatus === "demo" && (
-                      <p style={{ fontSize: 12, color: AMBER, marginTop: 12, maxWidth: 400, margin: "12px auto 0" }}>
-                        Running in demo mode. Add your Anthropic API key to .env and restart for live AI.
-                      </p>
-                    )}
-                  </div>
-                )}
-                {chatMsgs.map((msg, i) => (
-                  <div key={msg.msgId} style={{
-                    display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                    marginBottom: 16, maxWidth: "100%"
-                  }}>
-                    <div style={{
-                      maxWidth: msg.role === "user" ? "80%" : "90%",
-                      background: msg.role === "user" ? ACCENT_DIM : BG_CARD,
-                      border: msg.role === "user" ? "none" : `1px solid ${BORDER}`,
-                      borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                      padding: "12px 16px", fontSize: 14, lineHeight: 1.6,
-                      whiteSpace: "pre-wrap", wordBreak: "break-word"
-                    }}>
-                      {msg.role === 'assistant'
-                        ? <>
-                            <span dangerouslySetInnerHTML={{ __html:
-                                (msg.content || '')
-                                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                  .replace(/\n/g, '<br/>')
-                              }} />
-                            {msg.confidence && (
-                              <span style={{
-                                display: 'inline-block',
-                                marginTop: 8,
-                                padding: '2px 8px',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                borderRadius: 10,
-                                letterSpacing: 0.5,
-                                background: msg.confidence === 'HIGH' ? '#10B98120' : msg.confidence === 'MODERATE' ? '#F59E0B20' : '#94A3B820',
-                                color: msg.confidence === 'HIGH' ? '#10B981' : msg.confidence === 'MODERATE' ? '#F59E0B' : '#94A3B8',
-                                border: `1px solid ${msg.confidence === 'HIGH' ? '#10B98140' : msg.confidence === 'MODERATE' ? '#F59E0B40' : '#94A3B840'}`
-                              }}>
-                                {msg.confidence} confidence
-                              </span>
-                            )}
-                            {msg.failed === true && (
-                              <div style={{ marginTop: 8 }}>
-                                <button
-                                  onClick={() => retryChiefMessage(msg.msgId, msg.retryQuery)}
-                                  style={{
-                                    padding: '4px 12px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    background: '#F59E0B20',
-                                    border: '1px solid #F59E0B40',
-                                    borderRadius: 8,
-                                    color: '#F59E0B',
-                                    cursor: 'pointer',
-                                    fontFamily: "'DM Sans', sans-serif"
-                                  }}
-                                >
-                                  Retry
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        : msg.content}
-                    </div>
-                    {/* Auto-Log Decision Button for AI messages with decisions */}
-                    {msg.role === "assistant" && msg.content && detectDecisionInMessage(msg.content) && !streaming && (
-                      <button
-                        onClick={() => handleLogDecisionFromChat(i)}
-                        style={{
-                          marginTop: 8,
-                          padding: "6px 12px",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          background: `${ACCENT}15`,
-                          border: `1px solid ${ACCENT}40`,
-                          borderRadius: 8,
-                          color: ACCENT,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          fontFamily: "'DM Sans', sans-serif",
-                          transition: "all 0.2s"
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = `${ACCENT}25`;
-                          e.currentTarget.style.borderColor = ACCENT;
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = `${ACCENT}15`;
-                          e.currentTarget.style.borderColor = `${ACCENT}40`;
-                        }}
-                      >
-                        ðŸ Log to Journal
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {streaming && (
-                  <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
-                    <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`,
-                      borderRadius: "16px 16px 16px 4px", padding: "10px 14px",
-                      fontSize: 13, color: TEXT_DIM }}>
-                      Thinking...
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEnd}/>
-              </div>
-
-              {/* Chat File Attachments Preview */}
-              {chatFiles.length > 0 && (
-                <div style={{ padding: "8px 16px 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {chatFiles.map((f, i) => (
-                    <span key={i} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px",
-                      background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 8, fontSize: 12, color: ACCENT
-                    }}>
-                      <FileIcon size={12} color={ACCENT}/> {f.name}
-                      <button onClick={() => setChatFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: ACCENT, cursor: "pointer", padding: 0, marginLeft: 4, fontSize: 14, lineHeight: 1 }}>&times;</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Suggested Prompt Chips */}
-              {(() => {
-                const suggestedPrompts = [
-                  "What are my riskiest decisions?",
-                  "Summarise my decision patterns",
-                  "Which decisions need review?",
-                  "What should I prioritise this week?",
-                  "Show me stale decisions"
-                ];
-                const handleChipSend = async (promptText) => {
-                  if (streaming) return;
-                  setChatInput("");
-                  const newMsgs = [...chatMsgs, { role: "user", content: promptText, msgId: generateMsgId() }];
-                  setChatMsgs(newMsgs);
-                  setStreaming(true);
-                  try {
-                    const activeFindings = parsedFindings.filter(f => !resolvedFindings.includes(f.id));
-                    const totalExposureAmount = activeFindings.reduce((s, f) => s + (f.maxAmount || 0), 0);
-                    const totalExposureStr = totalExposureAmount > 0
-                      ? `${activeFindings.find(f => f.currencySymbol)?.currencySymbol || ''}${totalExposureAmount.toLocaleString()}`
-                      : null;
-                    const chiefContext = parsedFindings.length > 0 ? {
-                      findings: parsedFindings.slice(0, 3).map(f => ({
-                        title: f.pattern || '',
-                        severity: f.tier || '',
-                        impact: f.impact || '',
-                        evidence: f.evidence ? (f.evidence.length > 250 ? f.evidence.slice(0, 250).replace(/\S*$/, '').trim() + '...' : f.evidence) : '',
-                        fix: f.fix ? (f.fix.length > 300 ? f.fix.slice(0, 300).replace(/\S*$/, '').trim() + '...' : f.fix) : ''
-                      })),
-                      totalExposure: totalExposureStr,
-                      scanType: scanMode,
-                      domain: activeDomain,
-                      scannedAt: scanResults?.timestamp || revenueScanResults?.timestamp || null,
-                      dataSummary: localStorage.getItem('dao-uploaded-summary') || ''
-                    } : null;
-                    const chiefRes = await fetch('/api/chief', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ message: promptText, chiefContext })
-                    });
-                    const chiefData = await chiefRes.json();
-                    const chiefRaw = chiefData.text || 'I was unable to generate a response. Please try again.';
-                    const chiefConfMatch = chiefRaw.match(/\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b/i);
-                    const chiefConf = chiefConfMatch ? chiefConfMatch[1].toUpperCase() : null;
-                    const chiefText = chiefRaw.replace(/[-ââ]*\s*\bConfidence[:\s]+(HIGH|MODERATE|LOW)\b[^\n]*/gi, '').trim();
-                    setChatMsgs(prev => [...prev, { role: 'assistant', content: chiefText, confidence: chiefConf, msgId: generateMsgId() }]);
-                  } catch (e) {
-                    setChatMsgs(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", confidence: null, failed: true, retryQuery: promptText, msgId: generateMsgId() }]);
-                  }
-                  setStreaming(false);
-                };
-                return (
-                  <div style={{
-                    padding: "8px 16px 0",
-                    paddingBottom: '80px',
-                    display: "flex",
-                    gap: 8,
-                    overflowX: "auto",
-                    flexWrap: "nowrap",
-                    scrollbarWidth: "none"
-                  }}>
-                    {suggestedPrompts.map((prompt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleChipSend(prompt)}
-                        disabled={streaming}
-                        style={{
-                          flexShrink: 0,
-                          padding: "5px 12px",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          background: BG_SURFACE,
-                          border: `1px solid ${BORDER}`,
-                          borderRadius: 20,
-                          color: TEXT_DIM,
-                          cursor: streaming ? "not-allowed" : "pointer",
-                          whiteSpace: "nowrap",
-                          fontFamily: "'DM Sans', sans-serif",
-                          transition: "all 0.15s",
-                          opacity: streaming ? 0.5 : 1
-                        }}
-                        onMouseEnter={e => {
-                          if (!streaming) {
-                            e.currentTarget.style.background = `${ACCENT}15`;
-                            e.currentTarget.style.color = ACCENT;
-                            e.currentTarget.style.borderColor = `${ACCENT}50`;
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = BG_SURFACE;
-                          e.currentTarget.style.color = TEXT_DIM;
-                          e.currentTarget.style.borderColor = BORDER;
-                        }}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {/* Chat Input */}
-              <div style={{
-                position: "sticky", bottom: 0, background: BG_DARK, borderTop: `1px solid ${BORDER}`, padding: "12px 16px",
-              }}
-                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderTopColor = ACCENT; }}
-                onDragLeave={e => { e.currentTarget.style.borderTopColor = BORDER; }}
-                onDrop={e => { e.preventDefault(); e.currentTarget.style.borderTopColor = BORDER; handleChatFiles(Array.from(e.dataTransfer.files)); }}
-              >
-                <div style={{ display: "flex", gap: 8, maxWidth: 800, margin: "0 auto", alignItems: "flex-end" }}>
-                  <button onClick={() => chatFileRef.current?.click()} style={{ background: BG_SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "10px", cursor: "pointer", color: TEXT_DIM, display: "flex", flexShrink: 0 }} title="Attach file">
-                    <PaperclipIcon size={18}/>
-                  </button>
-                  <input ref={chatFileRef} type="file" multiple accept=".xlsx,.xls,.csv,.tsv,.txt,.pdf,.doc,.docx" style={{ display: "none" }}
-                    onChange={e => { handleChatFiles(Array.from(e.target.files)); e.target.value = ""; }}
-                  />
-                  <input
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                    placeholder={streaming ? "Thinking..." : "Ask about your operations, or drop a file here..."}
-                    style={{ ...inputStyle, flex: 1, margin: 0 }}
-                    disabled={streaming}
-                  />
-                  <button
-                    onClick={handleMic}
-                    title={micState === "error" ? "Voice not supported" : micState === "listening" ? "Listeningâ¦" : "Voice input"}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer", fontSize: 20,
-                      color: micState === "listening" ? "#EF4444" : "#64748B",
-                      animation: micState === "listening" ? "pulse 1s infinite" : "none",
-                      flexShrink: 0, padding: "6px"
-                    }}
-                  >ðŸ¤</button>
-                  <button onClick={sendMessage} disabled={streaming || (!chatInput.trim() && chatFiles.length === 0)} style={{ ...btnPrimary, padding: "10px 16px", opacity: (chatInput.trim() || chatFiles.length > 0) && !streaming ? 1 : 0.4, flexShrink: 0 }}>
-                    <SendIcon size={18} color="#fff"/>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )} />
+            <Route path="/chat" element={<Navigate to="/" replace />} />
 
           {/* âââââââ DASHBOARD VIEW âââââââ */}
             <Route path="/dashboard" element={(
