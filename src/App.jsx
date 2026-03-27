@@ -3741,7 +3741,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} />}
               />
           </Routes>
           </ShellFrame>
@@ -3815,7 +3815,131 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain }) {
+// T-S7.1 — Minimal temporary Step 7 download trigger.
+// Proves /api/board-report endpoint only. Not the real Step 7 narrative UI.
+// BoardReportNarrative.jsx is T-S7.2 and is not built here.
+function StepBoardReportTrigger({ journal, selectedOption, situationSummary, activeDomain, profile }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
+
+  // Locate target entry: most recent Reviewed, fallback to most recent Confirmed
+  const reviewedEntry  = [...(journal || [])].reverse().find(e => e.status === 'Reviewed')  || null;
+  const confirmedEntry = [...(journal || [])].reverse().find(e => e.status === 'Confirmed') || null;
+  const entry = reviewedEntry || confirmedEntry || null;
+
+  // Null-safe review record lookup — guards against entry.reviews being undefined or empty
+  const reviewRecords = Array.isArray(entry?.reviews) ? entry.reviews : [];
+  const reviewRecord  = reviewRecords.length > 0 ? reviewRecords[reviewRecords.length - 1] : null;
+
+  // Currency from domain config — never hardcoded
+  const domainObj = getDomain(activeDomain);
+  const currency  = domainObj?.currency || '';
+
+  // Financial figure: empty per CTO ruling — no derivation logic
+  const financialFigure = '';
+
+  function resolveStatusWording(riskLevel) {
+    switch ((riskLevel || '').toUpperCase()) {
+      case 'HIGH':   return 'Monitoring activated';
+      case 'MEDIUM': return 'Flagged for Finance';
+      default:       return 'Logged for Operations';
+    }
+  }
+
+  const handleDownload = async () => {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const payload = {
+        situationTitle:    entry?.statement || situationSummary || '',
+        situationSummary:  entry?.context || entry?.evidence || situationSummary || '',
+        decisionLabel:     selectedOption?.label || entry?.statement || '',
+        decisionRationale: selectedOption?.rationale || entry?.rationale || '',
+        decisionOwner:     entry?.owner || '',
+        decisionDate:      entry?.date || '',
+        reviewDate:        entry?.review_date || '',
+        statusWording:     resolveStatusWording(selectedOption?.risk_level),
+        outcome:           reviewRecord?.outcome || '',
+        lesson:            reviewRecord?.lesson || '',
+        variance:          reviewRecord?.variance || '',
+        financialFigure,
+        currency,
+        domain:            domainObj?.label || activeDomain || '',
+        orgName:           profile?.org || '',
+        generatedBy:       profile?.name || '',
+        generatedDate:     new Date().toLocaleDateString('en-GB', {
+                             day: 'numeric', month: 'long', year: 'numeric'
+                           }),
+      };
+
+      const response = await fetch('/api/board-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Server returned ' + response.status);
+
+      const blob = await response.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'DAO-Board-Report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Download failed. Please try again.');
+      console.error('[StepBoardReportTrigger]', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: '#0EA5E9', marginBottom: 8 }}>
+        BOARD REPORT
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: '#E2E8F0', marginBottom: 24 }}>
+        Board Report
+      </div>
+      <div style={{
+        background: '#111827', border: '1px solid #1E3A5F',
+        borderRadius: 12, padding: '20px 24px', marginBottom: 24,
+      }}>
+        <div style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
+          Your decision has been reviewed and recorded. Download the board-ready report below.
+        </div>
+      </div>
+      <button
+        onClick={handleDownload}
+        disabled={loading}
+        style={{
+          background: loading ? '#1E3A5F' : '#0EA5E9',
+          color: loading ? '#94A3B8' : '#0B1120',
+          border: 'none', borderRadius: 8,
+          padding: '12px 28px', fontSize: 14, fontWeight: 700,
+          cursor: loading ? 'not-allowed' : 'pointer',
+          opacity: loading ? 0.6 : 1,
+          fontFamily: "'DM Sans', sans-serif",
+          transition: 'all 0.15s',
+        }}
+      >
+        {loading ? 'Generating\u2026' : 'Download Board Report'}
+      </button>
+      {error && (
+        <div style={{ marginTop: 12, fontSize: 12, color: '#EF4444' }}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3854,5 +3978,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
+  if (n === '7') { return <StepBoardReportTrigger journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }

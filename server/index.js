@@ -1089,6 +1089,56 @@ Rules you must follow:
   }
 });
 
+// ─── T-S7.1: POST /api/board-report — server-side HTML-to-PDF ────────────────
+app.post('/api/board-report', async (req, res) => {
+  let browser;
+  try {
+    const { buildReportTemplate } = await import('./reportTemplate.js');
+    const html = buildReportTemplate(req.body);
+
+    if (process.env.NODE_ENV === 'production' || process.platform === 'linux') {
+      // Production / Railway / Linux: use puppeteer-core + @sparticuz/chromium
+      // This is the canonical production path — unchanged by this patch
+      const chromium = (await import('@sparticuz/chromium')).default;
+      const puppeteer = (await import('puppeteer-core')).default;
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+      });
+    } else {
+      // Local Windows dev only: use bundled puppeteer for local V2 proof
+      // This branch never runs on Railway — production path above is unchanged
+      const puppeteer = (await import('puppeteer')).default;
+      browser = await puppeteer.launch({ headless: 'new' });
+    }
+
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
+    });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="DAO-Board-Report.pdf"',
+      'Content-Length': pdf.length,
+    });
+    return res.send(pdf);
+  } catch (err) {
+    console.error('[/api/board-report error]', err.message, err.stack);
+    return res.status(500).json({ error: err.message });
+  } finally {
+    // Guarded close — runs on both success and failure paths
+    // Prevents browser processes hanging if any step above throws
+    if (browser) await browser.close().catch(() => {});
+  }
+});
+
 app.listen(PORT, () => {
   const key = getApiKey();
   console.log();
