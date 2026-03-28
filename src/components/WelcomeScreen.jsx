@@ -31,14 +31,14 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
     tile2Dest = '/situations';
   }
 
-  // ── Informational tiles 3–8 (display-only) ──────────────────
+  // ── Informational tiles 3–8 — live where singleSituationId exists ──────────
   const infoTiles = [
-    { step: 'Step 2', title: 'Understand',    text: 'Analyse the causal chain' },
-    { step: 'Step 3', title: 'Decide',         text: 'Review your options'     },
-    { step: 'Step 4', title: 'Confirm',        text: 'Log your decision'       },
-    { step: 'Step 5', title: 'Monitor',        text: 'Track outcomes'          },
-    { step: 'Step 6', title: 'Review',         text: 'Capture the lesson'      },
-    { step: 'Step 7', title: 'Board Report',   text: 'Export for governance'   },
+    { step: 'Step 2', title: 'Understand',    text: 'Analyse the causal chain',  dest: 2 },
+    { step: 'Step 3', title: 'Decide',         text: 'Review your options',       dest: 3 },
+    { step: 'Step 4', title: 'Confirm',        text: 'Log your decision',         dest: 4 },
+    { step: 'Step 5', title: 'Monitor',        text: 'Track outcomes',            dest: 5 },
+    { step: 'Step 6', title: 'Review',         text: 'Capture the lesson',        dest: 6 },
+    { step: 'Step 7', title: 'Board Report',   text: 'Export for governance',     dest: 7 },
   ];
 
   return (
@@ -223,54 +223,57 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
           </div>
 
           {/* ── Tiles 3–8 — Informational (display-only) ─────────── */}
-          {infoTiles.map(({ step, title, text }) => (
-            <div
-              key={title}
-              className="ws-tile-info"
-              style={{
-                opacity: 0.55,
-                padding: 'var(--space-5, 20px)',
-                borderRadius: '10px',
-                background: 'var(--color-bg-card, #111827)',
-                border: '1px solid var(--color-border, #1E3A5F)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-2, 8px)',
-              }}
-            >
-              <span
+          {infoTiles.map(({ step, title, text, dest }) => {
+            const canNav = Boolean(singleSituationId);
+            return (
+              <div
+                key={title}
+                className={canNav ? 'ws-tile-clickable' : 'ws-tile-info'}
+                onClick={canNav ? () => navigate(`/situation/${singleSituationId}/step/${dest}`) : undefined}
                 style={{
-                  fontSize: 'var(--text-xs, 11px)',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--color-accent-dim, #0284C7)',
+                  opacity: canNav ? 1 : 0.45,
+                  padding: 'var(--space-5, 20px)',
+                  borderRadius: '10px',
+                  background: 'var(--color-bg-card, #111827)',
+                  border: '1px solid var(--color-border, #1E3A5F)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-2, 8px)',
                 }}
               >
-                {step}
-              </span>
-              <span
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 600,
-                  lineHeight: 'var(--line-tight, 1.25)',
-                  color: 'var(--color-text, #E2E8F0)',
-                }}
-              >
-                {title}
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  lineHeight: 'var(--line-normal, 1.4)',
-                  color: 'var(--color-text-dim, #94A3B8)',
-                }}
-              >
-                {text}
-              </span>
-            </div>
-          ))}
-
+                <span
+                  style={{
+                    fontSize: 'var(--text-xs, 11px)',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color: 'var(--color-accent-dim, #0284C7)',
+                  }}
+                >
+                  {step}
+                </span>
+                <span
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    lineHeight: 'var(--line-tight, 1.25)',
+                    color: 'var(--color-text, #E2E8F0)',
+                  }}
+                >
+                  {title}
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    lineHeight: 'var(--line-normal, 1.4)',
+                    color: 'var(--color-text-dim, #94A3B8)',
+                  }}
+                >
+                  {canNav ? text : 'Start from Step 1 first'}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>

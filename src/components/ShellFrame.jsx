@@ -1,4 +1,5 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import Toast from './Toast.jsx';
 import DAOChief from './DAOChief.jsx';
 
 // ─── T-S0.2 local constants ───────────────────────────────────────────────────
@@ -35,8 +36,12 @@ export default function ShellFrame({
   handleLogDecisionFromChat,
   situationSummary,
   selectedOption,
+  toastVisible = false,
+  toastMessage = '',
+  onToastDismiss,
 }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   const match = STEP_ROUTE_RE.exec(pathname);
   const isStepRoute = Boolean(match);
@@ -138,6 +143,26 @@ export default function ShellFrame({
               {safeStep} / {TOTAL_STEPS}
             </span>
           )}
+          {/* Overview recovery — visible on step routes only */}
+          {isStepRoute && (
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-text-dim, #94A3B8)',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontFamily: "'DM Sans', sans-serif",
+                padding: '2px 6px',
+                borderRadius: 4,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ← Overview
+            </button>
+          )}
         </div>
 
         {/* Progress bar — only on step routes */}
@@ -168,6 +193,12 @@ export default function ShellFrame({
         currentStepLabel={safeStep ? (STEP_LABELS[safeStep] || `Step ${safeStep}`) : null}
         situationSummary={situationSummary}
         selectedOption={selectedOption}
+      />
+      <Toast
+        message={toastMessage}
+        type="success"
+        visible={toastVisible}
+        onDismiss={onToastDismiss}
       />
     </div>
   );

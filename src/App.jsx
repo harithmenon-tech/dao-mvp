@@ -1048,7 +1048,10 @@ export default function App() {
   const [activeDomain, setActiveDomain] = useState(
     localStorage.getItem('dao-active-domain') || DEFAULT_DOMAIN
   );
-
+  // ── Toast state (T-CU.2) ─────────────────────────────────────────────────
+  const [toastVisible, setToastVisible]   = useState(false);
+  const [toastMessage, setToastMessage]   = useState('');
+  const showToast = (msg) => { setToastMessage(msg); setToastVisible(true); };
   // Domain context â reads active domain from localStorage
   const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
   const domainConfig = getDomain(activeDomain);
@@ -1761,6 +1764,7 @@ export default function App() {
       return updated;
     });
     navigate(`/situation/${singleSituationId}/step/7`);
+    showToast('Review submitted');
   }
 
   const handleLogDecisionFromChat = (msgIndex) => {
@@ -2155,8 +2159,7 @@ export default function App() {
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
-    { id: "chat", label: "Chat", icon: ChatIcon },
-    { id: "scan", label: "Scan", icon: ScanIcon },
+    { id: "scan", label: "Situations", icon: ScanIcon },
     { id: "journal", label: "Decision Ledger", icon: BookIcon, badge: journal.length || null },
     { id: "track", label: "Track", icon: ClipboardIcon, badge: changeProjects.length || null },
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
@@ -2289,6 +2292,9 @@ export default function App() {
             generateMsgId={generateMsgId}
             detectDecisionInMessage={detectDecisionInMessage}
             handleLogDecisionFromChat={handleLogDecisionFromChat}
+            toastVisible={toastVisible}
+            toastMessage={toastMessage}
+            onToastDismiss={() => setToastVisible(false)}
           >
           <Routes>
             <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
@@ -3263,7 +3269,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} onToast={showToast} />}
               />
           </Routes>
           </ShellFrame>
@@ -3461,7 +3467,7 @@ function StepBoardReportTrigger({ journal, selectedOption, situationSummary, act
   );
 }
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3513,6 +3519,7 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
       <Confirm
         selectedOption={selectedOption}
         situationSummary={situationSummary}
+        onToast={onToast}
         onConfirm={(entry) => {
           onConfirm(entry)
           navigate(`/situation/${id}/step/5`)

@@ -35,7 +35,7 @@ function defaultReviewDate() {
   return d.toISOString().split('T')[0];
 }
 // ─── Component ────────────────────────────────────────────────────────────
-export default function Confirm({ selectedOption, situationSummary, onConfirm }) {
+export default function Confirm({ selectedOption, situationSummary, onConfirm, onToast }) {
   const [owner, setOwner]           = useState('');
   const [reviewDate, setReviewDate] = useState(defaultReviewDate());
   const [submitted, setSubmitted]   = useState(false);
@@ -85,6 +85,7 @@ export default function Confirm({ selectedOption, situationSummary, onConfirm })
       tags:            [],
       lifecycleStatus: 'Active',
     };
+    if (onToast) onToast('Decision logged');
     onConfirm(entry);
   };
   return (
