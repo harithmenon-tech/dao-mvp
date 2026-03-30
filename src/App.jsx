@@ -74,7 +74,7 @@ STEP 1 - DATA TRUTH:
 STEP 2 - CURRENT REALITY:
 - How does the organisation currently handle this?
 - Workarounds, manual processes, informal systems?
-- Check Decision Journal for prior decisions on this topic.
+- Check Decision Ledger for prior decisions on this topic.
 - Who is involved in the current process?
 
 STEP 3 - IMPACT QUANTIFICATION:
@@ -2398,7 +2398,7 @@ export default function App() {
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", color: TEXT }}>Decision Intelligence, Activated.</h2>
                 <p style={{ fontSize: 12, color: TEXT_DIM, margin: "0 0 14px" }}>Surface your top risks, opportunities, and decisions in 60 seconds.</p>
                 <button onClick={() => navigate("/brief")} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'DM Sans', sans-serif" }}>
-                  â¡ Generate 60-second Brief
+                  â¡ Generate 60s Brief
                 </button>
                 <button onClick={() => navigate("/chat")} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12, cursor: "pointer", marginTop: 10, padding: 0, fontFamily: "'DM Sans', sans-serif", display: "block", width: "100%", textAlign: "center" }}>
                   ðŸ¬ Discuss with AI
@@ -2436,7 +2436,7 @@ export default function App() {
                   <p style={{ color: "#94A3B8", fontSize: 12, margin: 0 }}>{new Date().toLocaleDateString("en-MY", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
                 </div>
                 <button onClick={generateBoardReport} style={{ background: `${ACCENT}15`, border: `1px solid ${ACCENT}40`, borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 700, color: ACCENT, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                  â¬ Export Board Report
+                  â¬ Export Board Report (PDF)
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
@@ -2632,7 +2632,7 @@ export default function App() {
                       disabled={boardPackLoading}
                       style={{ background: boardPackLoading ? BG_SURFACE : `${ACCENT}20`, color: boardPackLoading ? TEXT_DIM : ACCENT, border: `1px solid ${boardPackLoading ? BORDER : ACCENT}40`, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: boardPackLoading ? "not-allowed" : "pointer" }}
                     >
-                      {boardPackLoading ? "Generating..." : "Generate Board Pack"}
+                      {boardPackLoading ? "Building Board Pack..." : "Build Board Pack"}
                     </button>
                     {showBoardPack && (
                       <button onClick={() => setShowBoardPack(false)} style={{ background: "transparent", color: TEXT_DIM, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>Close</button>
@@ -3345,198 +3345,3 @@ const btnSmall = {
 };
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
-
-// T-S7.1 — Minimal temporary Step 7 download trigger.
-// Proves /api/board-report endpoint only. Not the real Step 7 narrative UI.
-// BoardReportNarrative.jsx is T-S7.2 and is not built here.
-function StepBoardReportTrigger({ journal, selectedOption, situationSummary, activeDomain, profile }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-
-  // Locate target entry: most recent Reviewed, fallback to most recent Confirmed
-  const reviewedEntry  = [...(journal || [])].reverse().find(e => e.status === 'Reviewed')  || null;
-  const confirmedEntry = [...(journal || [])].reverse().find(e => e.status === 'Confirmed') || null;
-  const entry = reviewedEntry || confirmedEntry || null;
-
-  // Null-safe review record lookup — guards against entry.reviews being undefined or empty
-  const reviewRecords = Array.isArray(entry?.reviews) ? entry.reviews : [];
-  const reviewRecord  = reviewRecords.length > 0 ? reviewRecords[reviewRecords.length - 1] : null;
-
-  // Currency from domain config — never hardcoded
-  const domainObj = getDomain(activeDomain);
-  const currency  = domainObj?.currency || '';
-
-  // Financial figure: empty per CTO ruling — no derivation logic
-  const financialFigure = '';
-
-  function resolveStatusWording(riskLevel) {
-    switch ((riskLevel || '').toUpperCase()) {
-      case 'HIGH':   return 'Monitoring activated';
-      case 'MEDIUM': return 'Flagged for Finance';
-      default:       return 'Logged for Operations';
-    }
-  }
-
-  const handleDownload = async () => {
-    if (loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const payload = {
-        situationTitle:    entry?.statement || situationSummary || '',
-        situationSummary:  entry?.context || entry?.evidence || situationSummary || '',
-        decisionLabel:     selectedOption?.label || entry?.statement || '',
-        decisionRationale: selectedOption?.rationale || entry?.rationale || '',
-        decisionOwner:     entry?.owner || '',
-        decisionDate:      entry?.date || '',
-        reviewDate:        entry?.review_date || '',
-        statusWording:     resolveStatusWording(selectedOption?.risk_level),
-        outcome:           reviewRecord?.outcome || '',
-        lesson:            reviewRecord?.lesson || '',
-        variance:          reviewRecord?.variance || '',
-        financialFigure,
-        currency,
-        domain:            domainObj?.label || activeDomain || '',
-        orgName:           profile?.org || '',
-        generatedBy:       profile?.name || '',
-        generatedDate:     new Date().toLocaleDateString('en-GB', {
-                             day: 'numeric', month: 'long', year: 'numeric'
-                           }),
-      };
-
-      const response = await fetch('/api/board-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error('Server returned ' + response.status);
-
-      const blob = await response.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = 'DAO-Board-Report.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError('Download failed. Please try again.');
-      console.error('[StepBoardReportTrigger]', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: '#0EA5E9', marginBottom: 8 }}>
-        BOARD REPORT
-      </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: '#E2E8F0', marginBottom: 24 }}>
-        Board Report
-      </div>
-      <div style={{
-        background: '#111827', border: '1px solid #1E3A5F',
-        borderRadius: 12, padding: '20px 24px', marginBottom: 24,
-      }}>
-        <div style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
-          Your decision has been reviewed and recorded. Download the board-ready report below.
-        </div>
-      </div>
-      <button
-        onClick={handleDownload}
-        disabled={loading}
-        style={{
-          background: loading ? '#1E3A5F' : '#0EA5E9',
-          color: loading ? '#94A3B8' : '#0B1120',
-          border: 'none', borderRadius: 8,
-          padding: '12px 28px', fontSize: 14, fontWeight: 700,
-          cursor: loading ? 'not-allowed' : 'pointer',
-          opacity: loading ? 0.6 : 1,
-          fontFamily: "'DM Sans', sans-serif",
-          transition: 'all 0.15s',
-        }}
-      >
-        {loading ? 'Generating\u2026' : 'Download Board Report'}
-      </button>
-      {error && (
-        <div style={{ marginTop: 12, fontSize: 12, color: '#EF4444' }}>
-          {error}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
-  const { id, n } = useParams();
-  const navigate = useNavigate();
-
-  if (!id || id === 'null' || id === 'undefined') {
-    return <Navigate to="/" replace />;
-  }
-
-  const matched = priorities.find(p => String(p.rank) === String(id));
-  if (n === '1') {
-    if (!priorities?.length) {
-      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
-    }
-
-    const priority =
-      matched || (String(id) === '1' ? priorities[0] : null);
-
-    if (!priority) {
-      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
-    }
-
-    return (
-      <OpeningMoment
-        priority={priority}
-        onNext={() => navigate(`/situation/${id}/step/2`)}
-      />
-    );
-  }
-  if (n === '2' && matched) {
-    const _confirmedPatterns = (patterns || []).filter(p => p.provisional !== true);
-    const priorCase = _confirmedPatterns.length > 0 ? _confirmedPatterns[0] : null;
-    return (
-      <CausalChain
-        priorities={priorities}
-        findings={findings || []}
-        priorCase={priorCase}
-        onNext={() => navigate(`/situation/${id}/step/3`)}
-      />
-    );
-  }
-  if (n === '3') {
-    return (
-      <OptionCards
-        situationSummary={situationSummary}
-        findings={findings || []}
-        onOptionSelect={(option) => {
-          onOptionSelect(option);
-          navigate(`/situation/${id}/step/4`);
-        }}
-      />
-    );
-  }
-  if (n === '4') {
-    return (
-      <Confirm
-        selectedOption={selectedOption}
-        situationSummary={situationSummary}
-        onToast={onToast}
-        onConfirm={(entry) => {
-          onConfirm(entry)
-          navigate(`/situation/${id}/step/5`)
-        }}
-      />
-    );
-  }
-  if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
-  if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
-  if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} />; }
-  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
-}

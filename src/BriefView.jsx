@@ -225,7 +225,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
           animation: "spin 0.8s linear infinite",
         }}/>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <p style={{ color: TEXT_DIM, fontSize: 14, margin: 0 }}>Generating your executive brief…</p>
+        <p style={{ color: TEXT_DIM, fontSize: 14, margin: 0 }}>Generating your 60s brief…</p>
       </div>
     );
   }
@@ -273,7 +273,7 @@ export default function BriefView({ profile, onBack, onChat, onNavigate }) {
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: ACCENT, marginBottom: 6 }}>
-        EXECUTIVE BRIEF
+        60S BRIEF
       </div>
 
       {/* Domain badge — shown only when dao-active-domain is 'water' */}
