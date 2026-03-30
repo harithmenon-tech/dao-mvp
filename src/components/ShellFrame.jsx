@@ -16,7 +16,7 @@ const STEP_LABELS = {
 };
 
 // Strict regex — must match /situation/<id>/step/<n> exactly
-const STEP_ROUTE_RE = /^\/situation\/[^/]+\/step\/(\d+)$/;
+const STEP_ROUTE_RE = /^\/situation\/([^/]+)\/step\/(\d+)$/;
 
 // ─── ShellFrame ───────────────────────────────────────────────────────────────
 export default function ShellFrame({
@@ -44,10 +44,11 @@ export default function ShellFrame({
   const navigate = useNavigate();
 
   const match = STEP_ROUTE_RE.exec(pathname);
+  const situationId = match ? match[1] : null;
   const isStepRoute = Boolean(match);
 
   // Parse step number only on step routes
-  const currentStep = isStepRoute ? parseInt(match[1], 10) : null;
+  const currentStep = isStepRoute ? parseInt(match[2], 10) : null;
 
   // Clamp to valid range so invalid values never break layout
   const safeStep =
@@ -142,6 +143,27 @@ export default function ShellFrame({
             }}>
               {safeStep} / {TOTAL_STEPS}
             </span>
+          )}
+                    {/* T-CF.5-P4 — Guided-flow recovery */}
+          {isStepRoute && safeStep !== null && safeStep > 1 && situationId && (
+            <button
+              onClick={() => navigate('/situation/' + situationId + '/step/' + (safeStep - 1))}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-text-dim, #94A3B8)',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontFamily: "'DM Sans', sans-serif",
+                padding: '2px 6px',
+                borderRadius: 4,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                marginRight: 2,
+              }}
+            >
+              ← Previous Step
+            </button>
           )}
           {/* Overview recovery — visible on step routes only */}
           {isStepRoute && (

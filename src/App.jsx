@@ -2309,6 +2309,25 @@ export default function App() {
             <Route path="/dashboard" element={(
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
 
+        {/* T-CF.5-P1 — Dashboard orientation */}
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#94A3B8',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontFamily: "'DM Sans', sans-serif",
+            padding: '0 0 12px 0',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          ← Overview
+        </button>
+
               <div style={{
                 background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
                 border: '1px solid #2d3748', borderRadius: 10,
@@ -3229,7 +3248,8 @@ export default function App() {
               </div>
 
               {/* DataConnection â T-S0.4 */}
-              <DataConnection runScan={runScan} scanning={scanning} uploadRefreshKey={uploadRefreshKey} />
+              <DataConnection runScan={runScan} scanning={scanning} uploadRefreshKey={uploadRefreshKey} 
+                singleSituationId={singleSituationId}/>
 
               <div style={{
                 background: '#1a1a2e', border: '1px solid #3a3a5c',

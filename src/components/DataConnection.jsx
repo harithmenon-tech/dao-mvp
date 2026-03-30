@@ -10,6 +10,7 @@
  *   runScan   {Function} — existing scan trigger from App.jsx
  *   scanning  {Boolean}  — scan in-progress flag from App.jsx
  */
+import { useNavigate } from 'react-router-dom';
 
 import React, { useState, useEffect } from 'react';
 import { loadDatasetRegistry } from '../core/data/datasetRegistry.js';
@@ -73,7 +74,8 @@ function formatType(record) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DataConnection({ runScan, scanning, uploadRefreshKey }) {
+export default function DataConnection({ runScan, scanning, uploadRefreshKey, singleSituationId }) {
+  const navigate = useNavigate();
   const [registry, setRegistry]       = useState([]);
   const [scanHistory, setScanHistory] = useState([]);
 
@@ -270,6 +272,18 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey }) 
           to { transform: rotate(360deg); }
         }
       `}</style>
+    
+      {/* T-CF.5-P2 */}
+      {hasFiles && (
+        <div style={{ textAlign: 'center', marginTop: 28, paddingBottom: 8 }}>
+          <button
+            onClick={() => { if (singleSituationId) { navigate('/situation/' + singleSituationId + '/step/1'); } else { navigate('/'); } }}
+            style={{ background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+          >
+            → Begin Analysis
+          </button>
+        </div>
+      )}
     </div>
   );
 }
