@@ -1085,12 +1085,14 @@ export default function App() {
   useEffect(() => {
     const p = store.get("dao-profile");
     const j = store.get("dao-journal");
-    const d = store.get("dao-datasets-meta");
+    const reg = loadDatasetRegistry();
     const s = store.get("dao-scan");
     const c = store.get("dao-chat");
     if (p) setProfile(p);
     if (j) setJournal(j);
-    if (d) setDatasets(d);
+    if (Array.isArray(reg) && reg.length > 0) {
+      setDatasets(reg.map(r => ({ ...r, name: r.name, type: r.type, rowCount: r.rowCount || 0 })));
+    }
     if (s) setScanResults(s);
     setLoading(false);
     preloadVarianceForDueDecisions();
@@ -1108,10 +1110,7 @@ export default function App() {
         setSituationAssessment({ assessment: savedSituation, scanId: null, assessedAt: null });
       }
     }
-    const savedDatasetsMeta = store.get('dao-datasets-meta');
-    if (Array.isArray(savedDatasetsMeta) && savedDatasetsMeta.length > 0) {
-      setDatasets(savedDatasetsMeta);
-    }
+
     loadCommandCentreStats();
   }, []);
 
