@@ -3345,3 +3345,69 @@ const btnSmall = {
 };
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
+
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
+  const { id, n } = useParams();
+  const navigate = useNavigate();
+  const matched = priorities.find(p => String(p.rank) === String(id));
+  if (n === '1') {
+    if (!priorities?.length) {
+      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
+    }
+
+    const priority =
+      matched || (String(id) === '1' ? priorities[0] : null);
+
+    if (!priority) {
+      return <div style={{ padding: 16, color: '#E2E8F0' }}>Loading situation…</div>;
+    }
+
+    return (
+      <OpeningMoment
+        priority={priority}
+        onNext={() => navigate(`/situation/${id}/step/2`)}
+      />
+    );
+  }
+  if (n === '2' && matched) {
+    const _confirmedPatterns = (patterns || []).filter(p => p.provisional !== true);
+    const priorCase = _confirmedPatterns.length > 0 ? _confirmedPatterns[0] : null;
+    return (
+      <CausalChain
+        priorities={priorities}
+        findings={findings || []}
+        priorCase={priorCase}
+        onNext={() => navigate(`/situation/${id}/step/3`)}
+      />
+    );
+  }
+  if (n === '3') {
+    return (
+      <OptionCards
+        situationSummary={situationSummary}
+        findings={findings || []}
+        onOptionSelect={(option) => {
+          onOptionSelect(option);
+          navigate(`/situation/${id}/step/4`);
+        }}
+      />
+    );
+  }
+  if (n === '4') {
+    return (
+      <Confirm
+        selectedOption={selectedOption}
+        situationSummary={situationSummary}
+        onToast={onToast}
+        onConfirm={(entry) => {
+          onConfirm(entry)
+          navigate(`/situation/${id}/step/5`)
+        }}
+      />
+    );
+  }
+  if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
+  if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
+  if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} />; }
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
+}
