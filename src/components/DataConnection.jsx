@@ -73,14 +73,14 @@ function formatType(record) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DataConnection({ runScan, scanning }) {
+export default function DataConnection({ runScan, scanning, uploadRefreshKey }) {
   const [registry, setRegistry]       = useState([]);
   const [scanHistory, setScanHistory] = useState([]);
 
   // Load on mount and after each scan cycle (scanning flips false when done).
   useEffect(() => {
     refresh();
-  }, [scanning]);
+  }, [scanning, uploadRefreshKey]);
 
   function refresh() {
     const reg  = loadDatasetRegistry();
@@ -145,7 +145,7 @@ export default function DataConnection({ runScan, scanning }) {
           {/* Column headers */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 130px 130px 88px',
+            gridTemplateColumns: '1fr 130px 130px 130px 88px',
             gap: 8,
             padding: '4px 14px 6px',
             fontSize: 11,
@@ -156,6 +156,7 @@ export default function DataConnection({ runScan, scanning }) {
           }}>
             <span>File Name</span>
             <span>Type</span>
+            <span>Uploaded</span>
             <span>Last Scan</span>
             <span>Status</span>
           </div>
@@ -169,7 +170,7 @@ export default function DataConnection({ runScan, scanning }) {
                 key={rec.dataset_id || i}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 130px 130px 88px',
+                  gridTemplateColumns: '1fr 130px 130px 130px 88px',
                   gap: 8,
                   alignItems: 'center',
                   background: BG_CARD,
@@ -192,6 +193,11 @@ export default function DataConnection({ runScan, scanning }) {
                 {/* Type */}
                 <span style={{ color: TEXT_DIM, fontSize: 12 }}>
                   {formatType(rec)}
+                </span>
+
+                {/* Uploaded */}
+                <span style={{ color: TEXT_DIM, fontSize: 12 }}>
+                  {rec.uploaded_at ? formatDate(rec.uploaded_at) : '—'}
                 </span>
 
                 {/* Last Scan */}

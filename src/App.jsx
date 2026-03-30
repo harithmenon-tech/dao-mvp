@@ -1004,6 +1004,7 @@ export default function App() {
   const [cf, setCf] = useState({ name: "", description: "" });
   const [copilotVariance, setCopilotVariance] = useState({variance:null,confidence:null,reasoning:null,loading:false});
   const [copilotReadyIds, setCopilotReadyIds] = useState([]);
+  const [uploadRefreshKey, setUploadRefreshKey] = useState(0);
   // ââ dao-situations parse (T-S0.3) ââââââââââââââââââââââââââââââ
   const rawSituations = (() => {
     try {
@@ -1337,13 +1338,15 @@ export default function App() {
         const suggestedDomain = classifySuggestDomain(record);
         record.domain = suggestedDomain;
         const existingRegistry = loadDatasetRegistry();
-        existingRegistry.push(record);
-        saveDatasetRegistry(existingRegistry);
+        const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
+        dedupedRegistry.push(record);
+        saveDatasetRegistry(dedupedRegistry);
       } catch (e) {
         console.error("Parse error:", e);
       }
     }
     setDatasets(newDatasets);
+    setUploadRefreshKey(k => k + 1);
     const summary = summarizeData(newDatasets, false);
     localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
     return newDatasets;
@@ -3227,7 +3230,7 @@ export default function App() {
               </div>
 
               {/* DataConnection â T-S0.4 */}
-              <DataConnection runScan={runScan} scanning={scanning} />
+              <DataConnection runScan={runScan} scanning={scanning} uploadRefreshKey={uploadRefreshKey} />
 
               <div style={{
                 background: '#1a1a2e', border: '1px solid #3a3a5c',
