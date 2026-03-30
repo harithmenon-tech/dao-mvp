@@ -1115,8 +1115,9 @@ export default function App() {
   }, []);
 
   // Persist
-  useEffect(() => { if (journal.length) store.set("dao-journal", journal);
-    if (journal.length > 0) { checkDecisionHealth(); } }, [journal]);
+  useEffect(() => {
+    if (journal.length) store.set("dao-journal", journal);
+  }, [journal]);
   useEffect(() => { if (scanResults) store.set("dao-scan", scanResults); }, [scanResults]);
   useEffect(() => { if (scanResults?.text) setParsedFindings(parseFindings(scanResults.text)); }, [scanResults]);
   useEffect(() => { if (revenueScanResults?.text) setRevenueFindings(parseRevenueFindings(revenueScanResults.text)); }, [revenueScanResults]);
@@ -1345,7 +1346,6 @@ export default function App() {
     setDatasets(newDatasets);
     const summary = summarizeData(newDatasets, false);
     localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
-    checkDecisionHealth();
     return newDatasets;
   };
 
@@ -1763,7 +1763,8 @@ export default function App() {
       savePatterns(refreshedPatterns);
       return updated;
     });
-    navigate(`/situation/${singleSituationId}/step/7`);
+    const currentId = location.pathname.split('/')[2];
+    navigate(`/situation/${currentId}/step/7`);
     showToast('Review submitted');
   }
 
@@ -1933,7 +1934,7 @@ export default function App() {
       // Task 3.7 â re-read all data from storage at PDF generation time (Flag 59)
       const liveJournal = loadJournal();
       const liveScanResult = store.get("dao-scan");
-      const liveCurrency = liveScanResult?.currency || 'RM';
+      const liveCurrency = liveScanResult?.currency || domainConfig?.currency || 'RM';
       const liveParsedFindings = liveScanResult?.text ? parseFindings(liveScanResult.text) : [];
       const liveRevenueScanResult = store.get("dao-revenue-scan");
       const liveRevenueFindings = liveRevenueScanResult?.text ? parseRevenueFindings(liveRevenueScanResult.text) : [];
@@ -2439,7 +2440,7 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                 {[
                   { label: "ACTIVE FINDINGS", value: parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length, color: parsedFindings.filter(f => !resolvedFindings.includes(f.id) && f.tier === "3").length > 0 ? "#EF4444" : "#F59E0B", sub: `${resolvedFindings.length} resolved` },
-                  { label: "FINANCIAL EXPOSURE", value: `RM ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
+                  { label: "FINANCIAL EXPOSURE", value: `${scanResults?.currency || domainConfig?.currency || 'RM'} ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
                   { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "Confirmed").length} pending review` },
                   { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "Reviewed").length, color: "#F59E0B", sub: "need attention" }
                 ].map((stat, i) => (
@@ -2462,7 +2463,7 @@ export default function App() {
                       <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981"}20`, color: f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", marginBottom: 2, lineHeight: 1.3 }}>{f.pattern}</div>
-                        {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>RM {f.dailyCost.toLocaleString()} / day</div>}
+                        {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>{scanResults?.currency || domainConfig?.currency || 'RM'} {f.dailyCost.toLocaleString()} / day</div>}
                       </div>
                       <button onClick={() => navigate("/situations")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View â</button>
                     </div>
@@ -3470,6 +3471,11 @@ function StepBoardReportTrigger({ journal, selectedOption, situationSummary, act
 function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
+
+  if (!id || id === 'null' || id === 'undefined') {
+    return <Navigate to="/" replace />;
+  }
+
   const matched = priorities.find(p => String(p.rank) === String(id));
   if (n === '1') {
     if (!priorities?.length) {

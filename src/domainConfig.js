@@ -42,7 +42,8 @@ export const DOMAINS = {
     focusAreas: ['Compliance', 'Operations', 'Quality', 'Infrastructure'],
     scanWeights: { revenue: 0.7, operational: 1.5, risk: 2.0 },
     escalationThreshold: 1,
-    chiefPersona: 'a water utility operations and compliance advisor'
+    chiefPersona: 'a water utility operations and compliance advisor',
+    currency: '£'
   }
 };
 
