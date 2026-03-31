@@ -74,7 +74,7 @@ function formatType(record) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DataConnection({ runScan, scanning, uploadRefreshKey, singleSituationId }) {
+export default function DataConnection({ runScan, scanning, uploadRefreshKey, singleSituationId, scanError }) {
   const navigate = useNavigate();
   const [registry, setRegistry]       = useState([]);
   const [scanHistory, setScanHistory] = useState([]);
@@ -227,6 +227,48 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
         </div>
       )}
 
+      {/* ── LS.1-FIX.1 — 3-file cap warning ── */}
+      {activeFiles.length > 3 && (
+        <div style={{
+          background: '#451A03',
+          border: '1px solid #D97706',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#FCD34D', marginBottom: 6, letterSpacing: '0.05em' }}>
+            SCAN CAPPED AT 3 SOURCES
+          </div>
+          <div style={{ fontSize: 13, color: '#FDE68A', marginBottom: 8 }}>
+            {activeFiles.length} files are connected. Only the first 3 will be used for this scan:
+          </div>
+          {activeFiles.slice(0, 3).map((f, i) => (
+            <div key={i} style={{ fontSize: 12, color: '#FDE68A', paddingLeft: 8, marginBottom: 2 }}>
+              {i + 1}. {f.name}
+            </div>
+          ))}
+          <div style={{ fontSize: 12, color: '#D97706', marginTop: 8 }}>
+            Remove files to scan all connected sources.
+          </div>
+        </div>
+      )}
+      {/* ── LS.1-FIX.3 — Scan failure message ── */}
+      {scanError && (
+        <div style={{
+          background: '#450A0A',
+          border: '1px solid #DC2626',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#FCA5A5', marginBottom: 6, letterSpacing: '0.05em' }}>
+            SCAN DID NOT PRODUCE RESULTS
+          </div>
+          <div style={{ fontSize: 13, color: '#FECACA' }}>
+            The last scan could not find findings in the connected data. Try reducing to 3 files and running the scan again.
+          </div>
+        </div>
+      )}
       {/* ── Scan Trigger ──────────────────────────────────────────────────── */}
       <button
         onClick={runScan}

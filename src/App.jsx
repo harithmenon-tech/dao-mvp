@@ -1102,8 +1102,12 @@ export default function App() {
     if (savedSituation) {
       // REHYDRATION ONLY â must never set situationIsNew.current
       if (Array.isArray(savedSituation)) {
-        const latest = savedSituation[savedSituation.length - 1];
-        if (latest) setSituationAssessment(latest);
+        const currentSitId = window.location.pathname.split('/')[2] || null;
+        const match = currentSitId
+          ? savedSituation.find(e => e.situationId === currentSitId)
+          : null;
+        const entry = match || savedSituation[savedSituation.length - 1];
+        if (entry) setSituationAssessment(entry);
       } else if (savedSituation.assessment && savedSituation.assessment.priorities) {
         setSituationAssessment(savedSituation);
       } else if (savedSituation.priorities) {
@@ -1604,6 +1608,7 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         const entry = {
+          situationId: location.pathname.split('/')[2] || null,
           assessment: data.assessment,
           scanId: data.scanId || null,
           assessedAt: new Date().toISOString()
@@ -2759,7 +2764,7 @@ export default function App() {
             <Route path="/situations" element={(() => {
               const priorities = situationAssessment?.assessment?.priorities || [];
               return priorities.length >= 2
-                ? <SituationQueue priorities={priorities} />
+                ? <SituationQueue priorities={priorities} lastScanAt={scanResults?.timestamp || null} />
                 : <EmptyState dataConnected={datasets.length > 0} onScan={runScan} />;
             })()} />
 
@@ -3248,8 +3253,8 @@ export default function App() {
               </div>
 
               {/* DataConnection â T-S0.4 */}
-              <DataConnection runScan={runScan} scanning={scanning} uploadRefreshKey={uploadRefreshKey} 
-                singleSituationId={singleSituationId}/>
+              <DataConnection runScan={runScan} scanning={scanning} uploadRefreshKey={uploadRefreshKey}
+                singleSituationId={singleSituationId} scanError={!!(scanResults?.error)}/>
 
               <div style={{
                 background: '#1a1a2e', border: '1px solid #3a3a5c',
@@ -3397,7 +3402,11 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
         priorities={priorities}
         findings={findings || []}
         priorCase={priorCase}
-        onNext={() => navigate(`/situation/${id}/step/3`)}
+        onNext={() => {
+          if (situationSummary && findings && findings.length > 0) {
+            navigate(`/situation/${id}/step/3`);
+          }
+        }}
       />
     );
   }

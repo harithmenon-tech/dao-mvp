@@ -198,7 +198,7 @@ function PriorityCard({ priority, onTap }) {
 }
 
 // ── SituationQueue ────────────────────────────────────────────────────────────
-export default function SituationQueue({ priorities }) {
+export default function SituationQueue({ priorities, onTap, lastScanAt }) {
   const navigate = useNavigate();
 
   if (!Array.isArray(priorities) || priorities.length < 2) {
@@ -240,6 +240,11 @@ export default function SituationQueue({ priorities }) {
         }}>
           {ranked.length} active decisions under watch
         </h2>
+        {lastScanAt && (
+          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+            Last scan: {new Date(lastScanAt).toLocaleString()}
+          </div>
+        )}
         <p style={{
           margin: 0,
           fontSize: 13,
