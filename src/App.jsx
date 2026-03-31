@@ -1472,7 +1472,10 @@ export default function App() {
       : datasets.slice(0, 3);
     const scanDatasets = routedDatasets.length > 0 ? routedDatasets : datasets.slice(0, 3);
     if (datasets.length > 3) console.warn("Scan capped at 3 sources. Upload fewer files for best results.");
-    const dataSummary = summarizeData(scanDatasets, true);
+    const derivedSummary = summarizeData(scanDatasets, true) || '';
+    const dataSummary = (scanDatasets.length > 0 && !derivedSummary.trim())
+      ? (localStorage.getItem('dao-uploaded-summary') || '')
+      : derivedSummary;
     try {
       const activeDomainId = localStorage.getItem('dao-active-domain') || 'generic';
       const scanOverlay = getScanOverlay(activeDomainId);
