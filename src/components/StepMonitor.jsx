@@ -144,7 +144,7 @@ export default function StepMonitor({
             fontFamily: "'DM Sans', sans-serif",
           }}
         >
-          Review outcome
+          Review DAO Discoveries →
         </button>
       </div>
     </div>

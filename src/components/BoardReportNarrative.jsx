@@ -13,6 +13,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDomain } from '../domainConfig';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ export default function BoardReportNarrative({
   situationSummary,
   activeDomain,
 }) {
+  const navigate       = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error,        setError]        = useState(null);
 
@@ -363,6 +365,34 @@ export default function BoardReportNarrative({
       >
         {isGenerating ? 'Generating\u2026' : 'Download Board Report'}
       </button>
+
+      {/* ── COMPLETION STATE ── */}
+      <div style={{ textAlign: 'center', marginTop: 32 }}>
+        <div style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#E2E8F0',
+          marginBottom: 16,
+          letterSpacing: '0.01em'
+        }}>
+          Decision is Now Live
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            background: '#0EA5E9',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '12px 28px',
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Return to DAO Overview →
+        </button>
+      </div>
 
       {error && (
         <div style={{ marginTop: 12, fontSize: 12, color: '#EF4444' }}>
