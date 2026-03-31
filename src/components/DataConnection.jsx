@@ -95,6 +95,16 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
   const hasFiles        = activeFiles.length > 0;
   const scanDisabled    = scanning || !hasFiles;
 
+  const sortedActiveFiles = [...activeFiles].sort(
+    (a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0)
+  );
+  const latestUploadName = sortedActiveFiles[0]?.name ?? null;
+  const allScanDates = activeFiles
+    .map(f => getLastScanForFile(f.name, scanHistory))
+    .filter(s => s?.date)
+    .map(s => new Date(s.date).getTime());
+  const latestScanDate = allScanDates.length ? Math.max(...allScanDates) : null;
+
   return (
     <div style={{ padding: '0 0 24px' }}>
 
@@ -164,9 +174,13 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
           </div>
 
           {/* Rows */}
-          {activeFiles.map((rec, i) => {
-            const lastScan = getLastScanForFile(rec.name, scanHistory);
-            const status   = resolveStatus(rec, lastScan);
+          {sortedActiveFiles.map((rec, i) => {
+            const lastScan       = getLastScanForFile(rec.name, scanHistory);
+            const status         = resolveStatus(rec, lastScan);
+            const isLatestUpload = rec.name === latestUploadName;
+            const isLatestScan   = lastScan?.date
+              ? new Date(lastScan.date).getTime() === latestScanDate
+              : false;
             return (
               <div
                 key={rec.dataset_id || i}
@@ -190,6 +204,9 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
                   title: rec.name,
                 }}>
                   {rec.name}
+                  {isLatestUpload && (
+                    <span style={{ fontSize: 10, color: ACCENT, marginLeft: 6, fontWeight: 600 }}>· Latest</span>
+                  )}
                 </span>
 
                 {/* Type */}
@@ -205,6 +222,9 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
                 {/* Last Scan */}
                 <span style={{ color: TEXT_DIM, fontSize: 12 }}>
                   {lastScan ? formatDate(lastScan.date) : 'Not scanned'}
+                  {isLatestScan && (
+                    <span style={{ fontSize: 10, color: ACCENT, marginLeft: 6, fontWeight: 600 }}>· Latest scan</span>
+                  )}
                 </span>
 
                 {/* Status badge */}
