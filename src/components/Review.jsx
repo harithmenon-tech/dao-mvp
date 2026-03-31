@@ -122,7 +122,7 @@ export default function Review({
     return (
       <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: ACCENT, marginBottom: 8 }}>
-          REVIEW
+          REVIEW & ASSIGN ACCOUNTABILITY
         </div>
         <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ fontSize: 14, color: TEXT_DIM, lineHeight: 1.5 }}>
@@ -137,10 +137,10 @@ export default function Review({
     <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
       {/* Section label */}
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: ACCENT, marginBottom: 8 }}>
-        REVIEW
+        REVIEW & ASSIGN ACCOUNTABILITY
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: TEXT, marginBottom: 24 }}>
-        Review outcome
+        Review DAO Discoveries and Assign Owner
       </div>
       {/* ── Decision context summary (read-only) ── */}
       <div style={{
@@ -304,7 +304,7 @@ export default function Review({
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        {submitted ? 'Review submitted' : 'Submit review'}
+        {submitted ? 'Accountability Assigned — Decision is Live' : 'Confirm Review and Assign Owner'}
       </button>
     </div>
   );

@@ -63,7 +63,7 @@ export default function StepMonitor({
   const subheading =
     situationSummary && situationSummary.trim()
       ? situationSummary
-      : 'Decision under active monitoring';
+      : 'DAO is monitoring outcomes — review when ready';
 
   const confirmedEntry = Array.isArray(journal)
     ? [...journal].reverse().find(e => e.status === 'Confirmed')
@@ -94,7 +94,7 @@ export default function StepMonitor({
           textTransform: 'uppercase',
         }}
       >
-        OPERATIONAL WATCH
+        DECISION UNDER ACTIVE WATCH
       </p>
 
       {/* Subheading */}

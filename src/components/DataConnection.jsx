@@ -280,7 +280,7 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
             onClick={() => { if (singleSituationId) { navigate('/situation/' + singleSituationId + '/step/1'); } else { navigate('/'); } }}
             style={{ background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
           >
-            → Begin Analysis
+            → Open Decision in DAO
           </button>
         </div>
       )}

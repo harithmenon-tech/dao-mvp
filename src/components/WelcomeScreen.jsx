@@ -15,19 +15,19 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
   if (situationCount >= 2) {
     tile2Step = 'Queue';
     tile2Label = 'See all situations';
-    tile2Text = `${situationCount} active situations`;
+    tile2Text = `${situationCount} decisions under active watch`;
     tile2Dest = '/situations';
   } else if (situationCount === 1) {
     tile2Step = 'Step 1';
-    tile2Label = 'Opening Moment';
-    tile2Text = '1 active situation';
+    tile2Label = 'Open a Decision';
+    tile2Text = '1 decision under active watch';
     tile2Dest = singleSituationId
       ? `/situation/${singleSituationId}/step/1`
       : '/situations';
   } else {
     tile2Step = 'Step 1';
-    tile2Label = 'Opening Moment';
-    tile2Text = 'Begin your first situation';
+    tile2Label = 'Open a Decision';
+    tile2Text = 'Open your first decision in DAO';
     tile2Dest = '/situations';
   }
 
@@ -35,8 +35,8 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
   const infoTiles = [
     { step: 'Step 2', title: 'Understand',    text: 'Analyse the causal chain',  dest: 2 },
     { step: 'Step 3', title: 'Decide',         text: 'Review your options',       dest: 3 },
-    { step: 'Step 4', title: 'Confirm',        text: 'Log your decision',         dest: 4 },
-    { step: 'Step 5', title: 'Monitor',        text: 'Track outcomes',            dest: 5 },
+    { step: 'Step 4', title: 'Confirm',        text: 'Commit your decision',       dest: 4 },
+    { step: 'Step 5', title: 'Monitor',        text: 'DAO is monitoring',          dest: 5 },
     { step: 'Step 6', title: 'Review',         text: 'Capture the lesson',        dest: 6 },
     { step: 'Step 7', title: 'Board Report',   text: 'Export for governance',     dest: 7 },
   ];
@@ -269,7 +269,7 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
                     color: 'var(--color-text-dim, #94A3B8)',
                   }}
                 >
-                  {canNav ? text : 'Start from Step 1 first'}
+                  {canNav ? text : 'Connect data first to unlock this step'}
                 </span>
               </div>
             );

@@ -6,7 +6,7 @@ import DAOChief from './DAOChief.jsx';
 const TOTAL_STEPS = 7;
 
 const STEP_LABELS = {
-  1: "Opening Moment",
+  1: "Open a Decision",
   2: "Understand",
   3: "Decide",
   4: "Confirm",
@@ -182,7 +182,7 @@ export default function ShellFrame({
                 whiteSpace: 'nowrap',
               }}
             >
-              ← Overview
+              ← DAO Overview
             </button>
           )}
         </div>

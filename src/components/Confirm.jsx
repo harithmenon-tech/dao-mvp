@@ -44,7 +44,7 @@ export default function Confirm({ selectedOption, situationSummary, onConfirm, o
     return (
       <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: ACCENT, marginBottom: 8 }}>
-          CONFIRM
+          COMMIT TO DAO
         </div>
         <div style={{
           background: BG_CARD, border: `1px solid ${BORDER}`,
@@ -92,10 +92,10 @@ export default function Confirm({ selectedOption, situationSummary, onConfirm, o
     <div style={{ padding: 24, maxWidth: 640, margin: '0 auto' }}>
       {/* Section label */}
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: ACCENT, marginBottom: 8 }}>
-        CONFIRM
+        COMMIT TO DAO
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: TEXT, marginBottom: 24 }}>
-        Confirm your decision
+        Commit Decision to DAO
       </div>
       {/* Decision summary card */}
       <div style={{
@@ -219,7 +219,7 @@ export default function Confirm({ selectedOption, situationSummary, onConfirm, o
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        {submitted ? 'Confirmed' : 'Confirm decision'}
+        {submitted ? 'Decision Committed — DAO is Watching' : 'Commit and Enter Active Follow-Through'}
       </button>
     </div>
   );

@@ -238,7 +238,7 @@ export default function SituationQueue({ priorities }) {
           color: TEXT,
           lineHeight: 1.25,
         }}>
-          {ranked.length} active situations
+          {ranked.length} active decisions under watch
         </h2>
         <p style={{
           margin: 0,
