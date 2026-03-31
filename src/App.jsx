@@ -3424,11 +3424,7 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
         priorities={priorities}
         findings={findings || []}
         priorCase={priorCase}
-        onNext={() => {
-          if (situationSummary && findings && findings.length > 0) {
-            navigate(`/situation/${id}/step/3`);
-          }
-        }}
+        onNext={() => navigate(`/situation/${id}/step/3`)}
       />
     );
   }

@@ -76,6 +76,7 @@ function formatType(record) {
 
 export default function DataConnection({ runScan, scanning, uploadRefreshKey, singleSituationId, scanError }) {
   const navigate = useNavigate();
+  const [tick, setTick] = useState(0);
   const [registry, setRegistry]       = useState([]);
   const [scanHistory, setScanHistory] = useState([]);
 
@@ -83,6 +84,17 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
   useEffect(() => {
     refresh();
   }, [scanning, uploadRefreshKey]);
+
+  // Re-render after 65 s so isJustUpdated badges can expire naturally
+  useEffect(() => {
+    const hasRecent = registry.some(r => {
+      const age = r.uploaded_at ? Date.now() - new Date(r.uploaded_at).getTime() : Infinity;
+      return age < 65000;
+    });
+    if (!hasRecent) return;
+    const t = setTimeout(() => setTick(n => n + 1), 65000);
+    return () => clearTimeout(t);
+  }, [registry, tick]);
 
   function refresh() {
     const reg  = loadDatasetRegistry();
@@ -178,6 +190,7 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
             const lastScan       = getLastScanForFile(rec.name, scanHistory);
             const status         = resolveStatus(rec, lastScan);
             const isLatestUpload = rec.name === latestUploadName;
+            const isJustUpdated  = rec.uploaded_at ? (Date.now() - new Date(rec.uploaded_at).getTime()) < 60000 : false;
             const isLatestScan   = lastScan?.date
               ? new Date(lastScan.date).getTime() === latestScanDate
               : false;
@@ -206,6 +219,9 @@ export default function DataConnection({ runScan, scanning, uploadRefreshKey, si
                   {rec.name}
                   {isLatestUpload && (
                     <span style={{ fontSize: 10, color: ACCENT, marginLeft: 6, fontWeight: 600 }}>· Latest</span>
+                  )}
+                  {isJustUpdated && (
+                    <span style={{ fontSize: 10, color: '#10B981', marginLeft: 6, fontWeight: 600 }}>· Updated</span>
                   )}
                 </span>
 
