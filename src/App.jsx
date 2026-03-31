@@ -1348,7 +1348,11 @@ export default function App() {
         console.error("Parse error:", e);
       }
     }
-    setDatasets(newDatasets);
+    setDatasets(prev => {
+          const existingNames = new Set(newDatasets.map(d => d.name));
+          const retained = prev.filter(d => !existingNames.has(d.name));
+          return [...retained, ...newDatasets];
+        });
     setUploadRefreshKey(k => k + 1);
     const summary = summarizeData(newDatasets, false);
     localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
@@ -1366,9 +1370,24 @@ export default function App() {
         console.error("Parse error:", e);
       }
     }
+    for (const parsed of parsedFiles) {
+      const file = { name: parsed.name };
+      const record = createDatasetRecord(file, parsed);
+      const suggestedDomain = classifySuggestDomain(record);
+      record.domain = suggestedDomain;
+      const existingRegistry = loadDatasetRegistry();
+      const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
+      dedupedRegistry.push(record);
+      saveDatasetRegistry(dedupedRegistry);
+    }
     setChatFiles(prev => [...prev, ...parsedFiles]);
     // Also add to global datasets
-    setDatasets(prev => [...prev, ...parsedFiles]);
+    setDatasets(prev => {
+      const existingNames = new Set(parsedFiles.map(d => d.name));
+      const retained = prev.filter(d => !existingNames.has(d.name));
+      return [...retained, ...parsedFiles];
+    });
+    setUploadRefreshKey(k => k + 1);
   };
 
   // âââââââââââ RISK RADAR âââââââââââ
