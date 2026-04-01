@@ -691,6 +691,16 @@ function detectCurrency(summary) {
   return null;
 }
 
+function injectProvenance(str, isRevenue) {
+  if (isRevenue) return str;
+  try {
+    const parsed = JSON.parse(str);
+    if (!Array.isArray(parsed.findings)) return str;
+    parsed.findings = parsed.findings.map(f => ({ ...f, provenanceType: 'uploaded_evidence' }));
+    return JSON.stringify(parsed);
+  } catch { return str; }
+}
+
 function derivePatterns(findings) {
   try {
     const patterns = [];
@@ -812,7 +822,7 @@ app.post('/api/scan', async (req, res) => {
         } catch { retryDerivedPatterns = []; }
         const scanId = `scan-${Date.now()}`;
         console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(retryClean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId} | retry: true`);
-        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns, currency: detectedCurrency, scanId });
+        return res.status(200).json({ text: injectProvenance(retryClean, isRevenue), patterns: retryDerivedPatterns, currency: detectedCurrency, scanId });
       } catch (retryErr) {
         console.error('[/api/scan] Retry threw:', retryErr.message);
         return res.status(422).json({ error: 'scan_output_invalid', text: raw });
@@ -826,7 +836,7 @@ app.post('/api/scan', async (req, res) => {
     } catch { derivedPatterns = []; }
     const scanId = `scan-${Date.now()}`;
     console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(clean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId}`);
-    return res.status(200).json({ text: clean, patterns: derivedPatterns, currency: detectedCurrency, scanId });
+    return res.status(200).json({ text: injectProvenance(clean, isRevenue), patterns: derivedPatterns, currency: detectedCurrency, scanId });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
     return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });
