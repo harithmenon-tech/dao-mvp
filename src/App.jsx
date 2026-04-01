@@ -1335,13 +1335,15 @@ export default function App() {
         console.error("Parse error:", e);
       }
     }
+    let mergedDatasets = [];
     setDatasets(prev => {
           const existingNames = new Set(newDatasets.map(d => d.name));
           const retained = prev.filter(d => !existingNames.has(d.name));
-          return [...retained, ...newDatasets];
+          mergedDatasets = [...retained, ...newDatasets];
+          return mergedDatasets;
         });
     setUploadRefreshKey(k => k + 1);
-    const summary = summarizeData(newDatasets, false);
+    const summary = summarizeData(mergedDatasets, false);
     localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
     return newDatasets;
   };
