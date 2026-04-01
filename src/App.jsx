@@ -1320,6 +1320,17 @@ export default function App() {
         const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
         dedupedRegistry.push(record);
         saveDatasetRegistry(dedupedRegistry);
+        // S2.2-A: purge stale scan history for re-uploaded file
+        const scanHist = JSON.parse(localStorage.getItem('dao-scan-history') || '[]');
+        const cleanedHist = scanHist
+          .map(entry => ({
+            ...entry,
+            datasetsUsed: Array.isArray(entry.datasetsUsed)
+              ? entry.datasetsUsed.filter(n => n !== record.name)
+              : entry.datasetsUsed,
+          }))
+          .filter(entry => !Array.isArray(entry.datasetsUsed) || entry.datasetsUsed.length > 0);
+        localStorage.setItem('dao-scan-history', JSON.stringify(cleanedHist));
       } catch (e) {
         console.error("Parse error:", e);
       }
@@ -1355,6 +1366,17 @@ export default function App() {
       const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
       dedupedRegistry.push(record);
       saveDatasetRegistry(dedupedRegistry);
+      // S2.2-A: purge stale scan history for re-uploaded file
+      const scanHist = JSON.parse(localStorage.getItem('dao-scan-history') || '[]');
+      const cleanedHist = scanHist
+        .map(entry => ({
+          ...entry,
+          datasetsUsed: Array.isArray(entry.datasetsUsed)
+            ? entry.datasetsUsed.filter(n => n !== record.name)
+            : entry.datasetsUsed,
+        }))
+        .filter(entry => !Array.isArray(entry.datasetsUsed) || entry.datasetsUsed.length > 0);
+      localStorage.setItem('dao-scan-history', JSON.stringify(cleanedHist));
     }
     setChatFiles(prev => [...prev, ...parsedFiles]);
     // Also add to global datasets
