@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 // No useState, no useEffect, no localStorage access.
 // ═══════════════════════════════════════════════════════════════
 
-export default function WelcomeScreen({ situationCount, singleSituationId, journal = [], profile = null }) {
+export default function WelcomeScreen({ situationCount, singleSituationId, journal = [], profile = null, topFindings = [] }) {
   const navigate = useNavigate();
 
   // ── Command-centre button style helper ───────────────────────
@@ -211,6 +211,43 @@ export default function WelcomeScreen({ situationCount, singleSituationId, journ
         </header>
 
         {/* ── 8-tile grid ───────────────────────────────────────── */}
+
+        {/* S2.5-A2: Top Priority Findings */}
+        {topFindings.length > 0 && (
+          <div style={{ marginBottom: 'var(--space-6, 24px)' }}>
+            <p style={{ margin: '0 0 var(--space-3, 12px)', fontSize: 'var(--text-xs, 11px)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-dim, #94A3B8)' }}>
+              Priority Findings
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3, 12px)' }}>
+              {topFindings.map((finding, i) => {
+                const resolvedTitle = finding.title || finding.pattern || '';
+                const resolvedSeverity = finding.severity || (finding.tier ? 'Tier ' + finding.tier : null);
+                const provLabel = finding.provenanceType === 'uploaded_evidence' ? 'Uploaded Evidence' : (finding.provenanceType || 'Evidence');
+                const sevColor = (resolvedSeverity === 'Tier 1' || finding.tier === '1') ? '#EF4444' : (resolvedSeverity === 'Tier 2' || finding.tier === '2') ? '#F59E0B' : '#94A3B8';
+                return (
+                  <div key={i} style={{ padding: 'var(--space-4, 16px)', borderRadius: '8px', background: 'var(--color-bg-card, #111827)', border: '1px solid var(--color-border, #1E3A5F)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text, #E2E8F0)', flex: 1, minWidth: 0 }}>{resolvedTitle}</span>
+                      {resolvedSeverity && (
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: sevColor, border: '1px solid ' + sevColor, borderRadius: '4px', padding: '1px 6px', whiteSpace: 'nowrap', opacity: 0.9 }}>
+                          {resolvedSeverity}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-dim, #94A3B8)', background: 'var(--color-bg-surface, #1E293B)', borderRadius: '4px', padding: '1px 6px', whiteSpace: 'nowrap' }}>
+                        {provLabel}
+                      </span>
+                    </div>
+                    {finding.evidence && (
+                      <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, color: 'var(--color-text-dim, #94A3B8)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {finding.evidence}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="ws-grid">
 
           {/* ── Tile 1 — Data Connection (clickable) ─────────────── */}
