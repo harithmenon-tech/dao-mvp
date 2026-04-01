@@ -2106,6 +2106,10 @@ export default function App() {
     setScanMode("operational");
     setChangeProjects([]);
     setShowChangeForm(false);
+    localStorage.removeItem('dao-datasets-registry');
+    localStorage.removeItem('dao-scan-history');
+    localStorage.removeItem('dao-uploaded-summary');
+    localStorage.removeItem('dao-active-domain');
   };
 
   async function preloadVarianceForDueDecisions() {
