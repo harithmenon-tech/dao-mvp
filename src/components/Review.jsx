@@ -38,6 +38,11 @@ function statusWording(riskLevel) {
   }
 }
 // ─── Component ───────────────────────────────────────────────────────────────
+// Module-level in-flight guard — survives remount, cleared on request completion/failure.
+// Key: confirmed entry id. Prevents duplicate /api/variance calls caused by remount
+// churn while a request is already active for this decision entry.
+const _varianceInFlight = new Set();
+
 export default function Review({
   journal,
   situationSummary,
@@ -63,6 +68,10 @@ export default function Review({
   // ── Fetch DAO suggestion on mount ─────────────────────────────────────────
   useEffect(() => {
     if (!entry) return;
+    const flightKey = `variance-${entry.id}`;
+    if (_varianceInFlight.has(flightKey)) return;
+    _varianceInFlight.add(flightKey);
+
     setDaoLoading(true);
     fetch('/api/variance', {
       method: 'POST',
@@ -89,7 +98,10 @@ export default function Review({
       .catch(() => {
         // API failure: suggestion silently omitted. Selector remains fully interactive.
       })
-      .finally(() => setDaoLoading(false));
+      .finally(() => {
+        _varianceInFlight.delete(flightKey);
+        setDaoLoading(false);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // ── Submit handler ─────────────────────────────────────────────────────────

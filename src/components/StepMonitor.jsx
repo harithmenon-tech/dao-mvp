@@ -3,6 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import MonitorGauge from './MonitorGauge.jsx';
 import InterventionTimeline from './InterventionTimeline.jsx';
 
+// Module-level in-flight guard — survives remount, cleared on request completion/failure.
+// Key: situation id (from route params). Prevents duplicate /api/decision-health calls
+// caused by remount churn while a request is already active for this situation.
+const _healthInFlight = new Set();
+
 export default function StepMonitor({
   selectedOption,
   situationSummary,
@@ -17,6 +22,10 @@ export default function StepMonitor({
   const [results, setResults] = useState([]);
 
   useEffect(() => {
+    const flightKey = `health-${id}`;
+    if (_healthInFlight.has(flightKey)) return;
+    _healthInFlight.add(flightKey);
+
     let cancelled = false;
 
     const dataSummary = findings ? JSON.stringify(findings).slice(0, 800) : '';
@@ -43,6 +52,9 @@ export default function StepMonitor({
         if (cancelled) return;
         setError(true);
         setLoading(false);
+      })
+      .finally(() => {
+        _healthInFlight.delete(flightKey);
       });
 
     return () => {
