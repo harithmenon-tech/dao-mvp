@@ -3421,5 +3421,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
-  if (n === '7') { return <BoardReportNarrative onReset={onReset} journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} findings={findings} />; }
-  return
+  if (n === '7') { return <BoardReportNarrative onReset={onReset} journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} findings={parsedFindings} />; }
+  return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
+}
