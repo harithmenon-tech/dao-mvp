@@ -1225,7 +1225,7 @@ export default function App() {
 
   // âââââââââââ ONBOARDING âââââââââââ
   const completeOnboarding = () => {
-    const p = { ...ob, createdAt: new Date().toISOString() };
+    const p = { ...ob, style: ob.style || "balanced", createdAt: new Date().toISOString() };
     setProfile(p);
     store.set("dao-profile", p);
     // Set active domain based on selected industry
@@ -1290,31 +1290,7 @@ export default function App() {
                 <option value="generic">Global / Other</option>
               </select>
             </label>
-            <button onClick={() => ob.name && ob.org && ob.industry && setOnboardStep(1)} disabled={!ob.name || !ob.org || !ob.industry} style={{ ...btnPrimary, width: "100%", opacity: ob.name && ob.org && ob.industry ? 1 : 0.4 }}>Continue</button>
-          </div>
-        )}
-
-        {onboardStep === 1 && (
-          <div style={{ background: BG_CARD, borderRadius: 16, padding: 32, border: `1px solid ${BORDER}` }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>One question to calibrate</h2>
-            <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 24 }}>This shapes how I communicate with you â it can be adjusted later.</p>
-            <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 24, lineHeight: 1.5 }}>When your team gives you bad news, what frustrates you more?</p>
-            {[
-              { key: "direct", label: "That they buried it", desc: "I want problems surfaced immediately, no sugarcoating" },
-              { key: "solution", label: "That they didn't come with a solution", desc: "Don't just tell me the problem â tell me what to do" },
-              { key: "balanced", label: "It depends on the situation", desc: "Give me the picture and options â I'll decide" }
-            ].map(opt => (
-              <button key={opt.key} onClick={() => setOb({...ob, style: opt.key})} style={{
-                display: "block", width: "100%", textAlign: "left", padding: "16px 20px", marginBottom: 12,
-                background: ob.style === opt.key ? `${ACCENT}15` : BG_SURFACE,
-                border: `1px solid ${ob.style === opt.key ? ACCENT : BORDER}`,
-                borderRadius: 12, cursor: "pointer", color: TEXT, transition: "all 0.2s"
-              }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{opt.label}</div>
-                <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>{opt.desc}</div>
-              </button>
-            ))}
-            <button onClick={completeOnboarding} disabled={!ob.style} style={{ ...btnPrimary, width: "100%", marginTop: 16, opacity: ob.style ? 1 : 0.4 }}>Launch My Command Centre</button>
+            <button onClick={() => ob.name && ob.org && ob.industry && completeOnboarding()} disabled={!ob.name || !ob.org || !ob.industry} style={{ ...btnPrimary, width: "100%", opacity: ob.name && ob.org && ob.industry ? 1 : 0.4 }}>Continue</button>
           </div>
         )}
       </div>
