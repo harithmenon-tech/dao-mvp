@@ -578,6 +578,7 @@ If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a
 - If data is insufficient to calculate the variance precisely, state the gap qualitatively and flag confidence as LOW.
 This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces a finding, include it within the 3-finding cap ranked by severity.
 
+Every finding object must include the provenanceType field set to exactly "uploaded_evidence". This field is mandatory and must not be omitted.
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.
 The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":"","provenanceType":"uploaded_evidence"}]}`;
 
