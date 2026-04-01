@@ -240,11 +240,11 @@ export function buildReportTemplate(fields) {
     </div>
     <div class="section-label">Outcome</div>
     <div class="card">
-      <div class="outcome-badge">${s.outcome}</div>
+      <div class="outcome-badge">${s.outcome || 'Review pending'}</div>
       ${varianceDisplay ? `<div class="meta-item" style="margin-bottom:12px;"><span class="meta-key">Variance vs Expected</span><span class="meta-val" style="display:block;margin-top:2px;">${varianceDisplay}</span></div>` : ''}
       <hr class="divider"/>
       <div class="section-label">Lesson</div>
-      <div class="card-body">${s.lesson}</div>
+      <div class="card-body">${s.lesson || 'No lesson has been recorded yet.'}</div>
     </div>
   </div>
 
