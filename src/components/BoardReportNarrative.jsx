@@ -254,8 +254,8 @@ export default function BoardReportNarrative({ onReset,
                            }),
         topFindingsForReport: Array.isArray(findings) && findings.length > 0
           ? findings.slice(0, 3).map(f => ({
-              title:          f.title          || '',
-              severity:       f.severity       || '',
+              title:          f.pattern        || f.title        || '',
+              severity:       f.tier           || f.severity     || '',
               evidence:       f.evidence       || '',
               provenanceType: f.provenanceType || 'uploaded_evidence',
             }))

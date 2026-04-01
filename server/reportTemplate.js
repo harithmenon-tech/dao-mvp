@@ -68,6 +68,7 @@ export function buildReportTemplate(fields) {
     orgName,
     generatedBy,
     generatedDate,
+    topFindingsForReport = [],
   } = fields;
 
   const s = {
@@ -277,6 +278,22 @@ export function buildReportTemplate(fields) {
     <span>Decision Accountability OS &nbsp;·&nbsp; 30GENS &nbsp;·&nbsp; CONFIDENTIAL</span>
     <span>Generated ${s.generatedDate}</span>
   </div>
+
+${Array.isArray(topFindingsForReport) && topFindingsForReport.length > 0 ? `
+<section style="padding: 24px 32px; page-break-before: auto;">
+  <div style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#94A3B8; margin-bottom:16px;">Key Findings &amp; Evidence</div>
+  ${topFindingsForReport.map(f => `
+  <div style="background:#111827; border:1px solid #1E3A5F; border-radius:6px; padding:14px 16px; margin-bottom:12px;">
+    <div style="margin-bottom:8px;">
+      <span style="color:#E2E8F0; font-size:13px; font-weight:600; flex:1;">${sanitise(f.title) || 'Finding'}</span>
+      ${f.severity ? `<span style="background:#1E3A5F; color:#94A3B8; font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase;">${sanitise(f.severity)}</span>` : ''}
+      <span style="color:#94A3B8; font-size:10px; font-style:italic;">${sanitise(f.provenanceType) === 'uploaded_evidence' ? 'Uploaded Evidence' : sanitise(f.provenanceType) || 'Evidence'}</span>
+    </div>
+    <div style="color:#94A3B8; font-size:12px; line-height:1.5;">${sanitise(f.evidence) || 'No evidence recorded.'}</div>
+  </div>
+  `).join('')}
+</section>
+` : ''}
 
 </body>
 </html>`;
