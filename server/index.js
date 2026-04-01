@@ -578,6 +578,7 @@ If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a
 - If data is insufficient to calculate the variance precisely, state the gap qualitatively and flag confidence as LOW.
 This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces a finding, include it within the 3-finding cap ranked by severity.
 
+You MUST return at least one finding. Never return an empty findings array. If no significant operational issues are present, return exactly one sentinel finding using this exact shape: {"number":1,"title":"No material findings detected","evidence":"No anomalies meeting the scan threshold were identified in the uploaded data.","recurrence":"N/A","impact":"N/A","rootCause":"none","fix":"No action required.","severity":"Tier 3","confidence":"HIGH","assumptions":"Data reviewed appears within normal operating parameters","provenanceType":"uploaded_evidence"}.
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.
 The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":"","provenanceType":"uploaded_evidence"}]}`;
 
