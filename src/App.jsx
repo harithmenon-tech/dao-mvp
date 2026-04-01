@@ -1299,7 +1299,7 @@ export default function App() {
 
   // âââââââââââ HANDLE FILE UPLOAD âââââââââââ
   const handleFiles = async (files) => {
-    const newDatasets = [...datasets];
+    const newDatasets = [];
     for (const file of files) {
       try {
         const parsed = await parseFile(file);
