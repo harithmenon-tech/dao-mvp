@@ -2121,6 +2121,18 @@ export default function App() {
     localStorage.removeItem('dao-scan-history');
     localStorage.removeItem('dao-uploaded-summary');
     localStorage.removeItem('dao-active-domain');
+    // 2.6-A.4: gap closure — storage, ref, state, navigation
+    store.del('dao-situation-assessment');
+    localStorage.removeItem('dao-auto-brief');
+    localStorage.removeItem('dao-patterns');
+    situationIsNew.current = false;
+    setSituationAssessment(null);
+    setAutoBrief(null);
+    setPatterns([]);
+    setSelectedOption(null);
+    setDecisionHealth(null);
+    setCopilotReadyIds([]);
+    navigate('/');
   };
 
   async function preloadVarianceForDueDecisions() {
