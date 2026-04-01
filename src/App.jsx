@@ -2476,7 +2476,7 @@ export default function App() {
 
               {/* ââ 4-step flow ââ */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
-                {[["ðŸ", "Upload"], ["ðŸ", "Scan"], ["â", "Decide"], ["ðŸ", "Track"]].map(([icon, label], i, arr) => (
+                {[["ðŸ", "Upload"], ["ðŸ", "Scan"], ["â", "Decide"], ["ðŸ", "Ledger"]].map(([icon, label], i, arr) => (
                   <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                       <span style={{ fontSize: 18 }}>{icon}</span>
@@ -3227,7 +3227,7 @@ export default function App() {
               onBack={() => navigate("/dashboard")}
               onChat={() => navigate("/chat")}
               onNavigate={(v) => {
-                const onNavMap = { dashboard: "/dashboard", chat: "/chat", scan: "/situations", journal: "/journal", track: "/track", data: "/connect", brief: "/brief", board: "/board" };
+                const onNavMap = { dashboard: "/dashboard", chat: "/chat", scan: "/situations", journal: "/journal", data: "/connect", brief: "/brief", board: "/board" };
                 navigate(onNavMap[v] || ("/" + v));
               }}
             />
