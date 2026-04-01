@@ -1972,7 +1972,7 @@ export default function App() {
       // Task 3.7 â re-read all data from storage at PDF generation time (Flag 59)
       const liveJournal = loadJournal();
       const liveScanResult = store.get("dao-scan");
-      const liveCurrency = liveScanResult?.currency || domainConfig?.currency || 'RM';
+      const liveCurrency = liveScanResult?.currency || domainConfig?.currency || '';
       const liveParsedFindings = liveScanResult?.text ? parseFindings(liveScanResult.text) : [];
       const liveRevenueScanResult = store.get("dao-revenue-scan");
       const liveRevenueFindings = liveRevenueScanResult?.text ? parseRevenueFindings(liveRevenueScanResult.text) : [];
@@ -2041,12 +2041,12 @@ export default function App() {
         line("3.  REVENUE OPPORTUNITIES", 11, true, [14, 165, 233]);
         gap(4);
         const totalRevPot = liveRevenueFindings.reduce((s, o) => s + o.maxAmount, 0);
-        line(`Total Potential: RM ${totalRevPot.toLocaleString()}  |  Quick Wins: ${liveRevenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
+        line(`Total Potential: ${liveCurrency} ${totalRevPot.toLocaleString()}  |  Quick Wins: ${liveRevenueFindings.filter(o => o.isQuickWin).length}`, 9, false, [226, 232, 240]);
         gap(3);
         liveRevenueFindings.forEach((o, i) => {
           line(`${i + 1}.  [${o.category}]  ${stripMd(o.pattern)}`, 9, false, [226, 232, 240]);
           gap(1);
-          if (o.maxAmount > 0) { line(`     Potential: RM ${o.maxAmount.toLocaleString()}  |  ${stripMd(o.timeframe?.split("(")[0].trim())}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
+          if (o.maxAmount > 0) { line(`     Potential: ${liveCurrency} ${o.maxAmount.toLocaleString()}  |  ${stripMd(o.timeframe?.split("(")[0].trim())}  |  ${o.isQuickWin ? "QUICK WIN" : ""}`, 8, false, [148, 163, 184]); gap(1); }
           if (o.action) { line(`     Action: ${stripMd(o.action).substring(0, 90)}`, 8, false, [148, 163, 184]); }
           gap(3);
         });
@@ -2499,7 +2499,7 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                 {[
                   { label: "ACTIVE FINDINGS", value: parsedFindings.filter(f => !resolvedFindings.includes(f.id)).length, color: parsedFindings.filter(f => !resolvedFindings.includes(f.id) && f.tier === "3").length > 0 ? "#EF4444" : "#F59E0B", sub: `${resolvedFindings.length} resolved` },
-                  { label: "FINANCIAL EXPOSURE", value: `${scanResults?.currency || domainConfig?.currency || 'RM'} ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
+                  { label: "FINANCIAL EXPOSURE", value: `${scanResults?.currency || domainConfig?.currency || ''} ${parsedFindings.filter(f => !resolvedFindings.includes(f.id)).reduce((s, f) => s + f.maxAmount, 0).toLocaleString()}`, color: "#EF4444", sub: "active & unresolved" },
                   { label: "DECISIONS LOGGED", value: journal.length, color: "#0EA5E9", sub: `${journal.filter(j => j.status === "Confirmed").length} pending review` },
                   { label: "OVERDUE REVIEWS", value: journal.filter(j => new Date(j.review_date) < new Date() && j.status !== "Reviewed").length, color: "#F59E0B", sub: "need attention" }
                 ].map((stat, i) => (
@@ -2522,7 +2522,7 @@ export default function App() {
                       <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981"}20`, color: f.tier === "3" ? "#EF4444" : f.tier === "2" ? "#F59E0B" : "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0", marginBottom: 2, lineHeight: 1.3 }}>{f.pattern}</div>
-                        {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>{scanResults?.currency || domainConfig?.currency || 'RM'} {f.dailyCost.toLocaleString()} / day</div>}
+                        {f.dailyCost > 0 && <div style={{ fontSize: 11, color: "#EF4444" }}>{scanResults?.currency || domainConfig?.currency || ''} {f.dailyCost.toLocaleString()} / day</div>}
                       </div>
                       <button onClick={() => navigate("/situations")} style={{ background: "none", border: "none", color: "#0EA5E9", cursor: "pointer", fontSize: 11, padding: 0, flexShrink: 0 }}>View â</button>
                     </div>
