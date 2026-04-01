@@ -3285,7 +3285,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} onToast={showToast} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} onToast={showToast} onReset={resetAll} />}
               />
           </Routes>
           </ShellFrame>
@@ -3359,7 +3359,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast, onReset }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3421,6 +3421,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
-  if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} />; }
+  if (n === '7') { return <BoardReportNarrative onReset={onReset} journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }

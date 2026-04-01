@@ -158,7 +158,7 @@ function NarrativeCard({ label, content }) {
 
 // ─── main component ──────────────────────────────────────────────────────────
 
-export default function BoardReportNarrative({
+export default function BoardReportNarrative({ onReset,
   journal,
   selectedOption,
   situationSummary,
@@ -462,8 +462,26 @@ export default function BoardReportNarrative({
             cursor: 'pointer',
           }}
         >
-          Return to DAO Overview →
+          Return to DAO Overview ←
         </button>
+      {onReset && (
+        <button
+          onClick={onReset}
+          style={{
+            marginTop: 12,
+            background: 'none',
+            border: '1px solid #1E3A5F',
+            borderRadius: 8,
+            color: '#64748B',
+            fontSize: 13,
+            fontFamily: "'DM Sans', sans-serif",
+            padding: '8px 24px',
+            cursor: 'pointer',
+          }}
+        >
+          Reset and Start New Analysis
+        </button>
+      )}
       </div>
 
       {error && (
