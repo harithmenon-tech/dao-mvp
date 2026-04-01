@@ -579,7 +579,7 @@ If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a
 This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces a finding, include it within the 3-finding cap ranked by severity.
 
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.
-The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":""}]}`;
+The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":"","provenanceType":"uploaded_evidence"}]}`;
 
 const REVENUE_SCAN_PROMPT_SERVER = (domain, currency) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
 ${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
