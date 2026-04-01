@@ -2301,7 +2301,7 @@ export default function App() {
             onToastDismiss={() => setToastVisible(false)}
           >
           <Routes>
-            <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
+            <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} journal={journal} profile={profile} />} />
             <Route path="/board" element={<Navigate to="/" replace />} />
 
             <Route path="/chat" element={<Navigate to="/" replace />} />

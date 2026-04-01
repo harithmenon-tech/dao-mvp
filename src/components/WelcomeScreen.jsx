@@ -7,8 +7,23 @@ import { useNavigate } from 'react-router-dom';
 // No useState, no useEffect, no localStorage access.
 // ═══════════════════════════════════════════════════════════════
 
-export default function WelcomeScreen({ situationCount, singleSituationId }) {
+export default function WelcomeScreen({ situationCount, singleSituationId, journal = [], profile = null }) {
   const navigate = useNavigate();
+
+  // ── Command-centre button style helper ───────────────────────
+  const cmdBtn = (accent, disabled = false) => ({
+    padding: '9px 18px',
+    borderRadius: '8px',
+    background: 'transparent',
+    border: `1px solid ${accent}`,
+    color: disabled ? 'var(--color-text-dim, #94A3B8)' : accent,
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.4 : 1,
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'opacity 0.15s',
+  });
 
   // ── Tile 2 content derived entirely from props ───────────────
   let tile2Step, tile2Label, tile2Text, tile2Dest;
@@ -124,6 +139,75 @@ export default function WelcomeScreen({ situationCount, singleSituationId }) {
           >
             Surface truth. Force decisions. Make change stick.
           </p>
+        {/* ── Command-centre strip ─────────────────────────────── */}
+        {(() => {
+          const today = new Date().toISOString().split('T')[0];
+          const urgentCount = journal.filter(
+            e => e.review_date && e.review_date <= today && e.status !== 'Reviewed'
+          ).length;
+          const greeting = profile?.name ? `Welcome back, ${profile.name}.` : 'Welcome back.';
+          return (
+            <div style={{ marginTop: 'var(--space-6, 24px)' }}>
+              {/* Greeting + urgency signal */}
+              <p style={{
+                margin: '0 0 var(--space-4, 16px)',
+                fontSize: '15px',
+                color: 'var(--color-text-dim, #94A3B8)',
+                lineHeight: 1.5,
+              }}>
+                {greeting}
+                {urgentCount > 0 && (
+                  <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 8 }}>
+                    {urgentCount} decision{urgentCount > 1 ? 's' : ''} need{urgentCount === 1 ? 's' : ''} your attention.
+                  </span>
+                )}
+                {urgentCount === 0 && journal.length > 0 && (
+                  <span style={{ color: '#10B981', marginLeft: 8 }}>
+                    All decisions are on track.
+                  </span>
+                )}
+              </p>
+              {/* Four canonical action buttons */}
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 'var(--space-3, 12px)',
+              }}>
+                <button
+                  onClick={() => navigate('/connect')}
+                  style={cmdBtn('#0EA5E9')}
+                >
+                  Start New Case →
+                </button>
+                <button
+                  onClick={() => {
+                    if (situationCount >= 2) navigate('/situations');
+                    else if (situationCount === 1 && singleSituationId) navigate(`/situation/${singleSituationId}/step/1`);
+                  }}
+                  disabled={situationCount === 0}
+                  style={cmdBtn('#0EA5E9', situationCount === 0)}
+                >
+                  Resume Latest Case →
+                </button>
+                {/* Both buttons below route to /journal in this commit.
+                    This is intentional and must not be expanded into
+                    a deeper routing task in this commit. */}
+                <button
+                  onClick={() => navigate('/journal')}
+                  style={cmdBtn('#64748B')}
+                >
+                  Open Decision Ledger →
+                </button>
+                <button
+                  onClick={() => navigate('/journal')}
+                  style={cmdBtn(urgentCount > 0 ? '#F59E0B' : '#64748B')}
+                >
+                  Review Challenged Decisions {urgentCount > 0 ? `(${urgentCount})` : ''} →
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         </header>
 
         {/* ── 8-tile grid ───────────────────────────────────────── */}
