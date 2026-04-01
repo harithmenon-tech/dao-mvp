@@ -1796,7 +1796,12 @@ export default function App() {
       savePatterns(refreshedPatterns);
       return updated;
     });
-    const currentId = location.pathname.split('/')[2];
+    const currentId = location.pathname.split('/')[2] || null;
+    if (!currentId || currentId === 'null' || currentId === 'undefined') {
+      showToast('Session lost — returning to Overview');
+      navigate('/');
+      return;
+    }
     navigate(`/situation/${currentId}/step/7`);
     showToast('Review submitted');
   }
@@ -3362,6 +3367,9 @@ const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBotto
 function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast, onReset }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
+  if (!id || id === 'null' || id === 'undefined') {
+    return <Navigate to="/" replace />;
+  }
   const matched = priorities.find(p => String(p.rank) === String(id));
   if (n === '1') {
     if (!priorities?.length) {
