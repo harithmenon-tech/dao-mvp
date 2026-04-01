@@ -2191,7 +2191,6 @@ export default function App() {
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "scan", label: "Situations", icon: ScanIcon },
     { id: "journal", label: "Decision Ledger", icon: BookIcon, badge: journal.length || null },
-    { id: "track", label: "Track", icon: ClipboardIcon, badge: changeProjects.length || null },
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
   ];
 
@@ -2200,7 +2199,6 @@ export default function App() {
     chat: "/chat",
     scan: "/situations",
     journal: "/journal",
-    track: "/track",
     data: "/connect"
   };
 
@@ -3195,47 +3193,7 @@ export default function App() {
             </div>
           )} />
 
-          {/* âââââââ CHANGE TRACKER VIEW âââââââ */}
-            <Route path="/track" element={(
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 4px" }}>Change Tracker</h2>
-                  <p style={{ fontSize: 12, color: TEXT_DIM, margin: 0 }}>Track AI & digital transformation implementation progress</p>
-                </div>
-                <button onClick={() => setShowChangeForm(true)} style={btnPrimary}><PlusIcon size={16}/> New Project</button>
-              </div>
-              {showChangeForm && (
-                <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${ACCENT}40`, padding: 20, marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, marginTop: 0, marginBottom: 16 }}>New Implementation Project</h3>
-                  <label style={labelStyle}>
-                    <span style={labelText}>Project Name</span>
-                    <input value={cf.name} onChange={e => setCf({...cf, name: e.target.value})} placeholder="e.g. Decision Accountability OS Rollout" style={inputStyle}/>
-                  </label>
-                  <label style={labelStyle}>
-                    <span style={labelText}>Description</span>
-                    <input value={cf.description} onChange={e => setCf({...cf, description: e.target.value})} placeholder="e.g. Enterprise-wide AI implementation for Operations division" style={inputStyle}/>
-                  </label>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button onClick={addChangeProject} disabled={!cf.name} style={{ ...btnPrimary, opacity: cf.name ? 1 : 0.4 }}>Create Project</button>
-                    <button onClick={() => setShowChangeForm(false)} style={btnSmall}>Cancel</button>
-                  </div>
-                </div>
-              )}
-              {changeProjects.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
-                  <ClipboardIcon size={48} color={TEXT_DIM}/>
-                  <h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Projects Yet</h3>
-                  <p style={{ fontSize: 14, maxWidth: 360, margin: "0 auto 16px" }}>Create a project for each AI or digital transformation implementation you are rolling out. Track progress workstream by workstream with RAG status.</p>
-                  <button onClick={() => setShowChangeForm(true)} style={btnPrimary}>Create First Project</button>
-                </div>
-              ) : (
-                changeProjects.map(project => (
-                  <ChangeProjectCard key={project.id} project={project} onUpdateWorkstream={updateWorkstream}/>
-                ))
-              )}
-            </div>
-          )} />
+            <Route path="/track" element={<Navigate to="/" replace />} />
 
           {/* âââââââ BRIEF VIEW âââââââ */}
             <Route path="/brief" element={(
