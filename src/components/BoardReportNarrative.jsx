@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getDomain } from '../domainConfig';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -158,15 +158,22 @@ function NarrativeCard({ label, content }) {
 
 // ─── main component ──────────────────────────────────────────────────────────
 
-export default function BoardReportNarrative({
+export default function BoardReportNarrative({ onReset,
   journal,
   selectedOption,
   situationSummary,
   activeDomain,
+  findings = [],
+  profile,
 }) {
   const navigate       = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error,        setError]        = useState(null);
+  const location              = useLocation();
+  const step6Path             = location.pathname.replace(/\/step\/\d+$/, '/step/6');
+  const [proceedAnyway, setProceedAnyway] = useState(false);
+  const hasReviewedEntry      = resolveEntry(journal)?.status === 'Reviewed';
+  const showIncompleteWarning = !hasReviewedEntry && !proceedAnyway;
 
   // ── resolve journal entry & review record ──────────────────────────────
   const entry        = resolveEntry(journal);
@@ -240,11 +247,19 @@ export default function BoardReportNarrative({
         financialFigure:   '',  // per CTO ruling — no derivation
         currency,
         domain:            domainObj?.label || activeDomain || '',
-        orgName:           '',  // profile not in scope; harmless empty
-        generatedBy:       '',  // profile not in scope; harmless empty
+        orgName:           profile?.org  || '',
+        generatedBy:       profile?.name || '',
         generatedDate:     new Date().toLocaleDateString('en-GB', {
                              day: 'numeric', month: 'long', year: 'numeric',
                            }),
+        topFindingsForReport: Array.isArray(findings) && findings.length > 0
+          ? findings.slice(0, 3).map(f => ({
+              title:          f.pattern        || f.title        || '',
+              severity:       f.tier           || f.severity     || '',
+              evidence:       f.evidence       || '',
+              provenanceType: f.provenanceType || 'uploaded_evidence',
+            }))
+          : [],
       };
 
       const response = await fetch('/api/board-report', {
@@ -275,6 +290,72 @@ export default function BoardReportNarrative({
   // ── render ──────────────────────────────────────────────────────────────
   return (
     <div style={{ padding: 24, maxWidth: 680, margin: '0 auto' }}>
+      {showIncompleteWarning && (
+        <div style={{
+          margin: '0 0 20px 0',
+          padding: '16px 20px',
+          background: '#FFF7ED',
+          border: '1px solid #F59E0B',
+          borderRadius: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div>
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#92400E',
+              marginBottom: 4,
+            }}>
+              Review not completed
+            </div>
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 13,
+              color: '#78350F',
+              lineHeight: 1.5,
+            }}>
+              These findings have not yet been reviewed in Step 6. Return to
+              complete your review before presenting this report.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={() => navigate(step6Path)}
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#ffffff',
+                background: '#F59E0B',
+                border: 'none',
+                borderRadius: 6,
+                padding: '7px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              Return to Step 6
+            </button>
+            <button
+              onClick={() => setProceedAnyway(true)}
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13,
+                color: '#92400E',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              Continue anyway
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── DARK EXECUTIVE HEADER ── */}
       <div style={{
@@ -390,8 +471,26 @@ export default function BoardReportNarrative({
             cursor: 'pointer',
           }}
         >
-          Return to DAO Overview →
+          Return to DAO Overview ←
         </button>
+      {onReset && (
+        <button
+          onClick={onReset}
+          style={{
+            marginTop: 12,
+            background: 'none',
+            border: '1px solid #1E3A5F',
+            borderRadius: 8,
+            color: '#64748B',
+            fontSize: 13,
+            fontFamily: "'DM Sans', sans-serif",
+            padding: '8px 24px',
+            cursor: 'pointer',
+          }}
+        >
+          Reset and Start New Analysis
+        </button>
+      )}
       </div>
 
       {error && (

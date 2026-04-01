@@ -1202,6 +1202,12 @@ export default function App() {
         return { name: d.name, type: d.type, rowCount: d.totalRows || d.rowCount || 0 };
       })
     );
+    if (datasets.length) {
+      const uploadedSummary = summarizeData(datasets, false);
+      localStorage.setItem('dao-uploaded-summary', uploadedSummary.slice(0, 2000));
+    } else {
+      localStorage.removeItem('dao-uploaded-summary');
+    }
   }, [datasets]);
 
   // Auto-scroll chat
@@ -1225,7 +1231,7 @@ export default function App() {
 
   // âââââââââââ ONBOARDING âââââââââââ
   const completeOnboarding = () => {
-    const p = { ...ob, createdAt: new Date().toISOString() };
+    const p = { ...ob, style: ob.style || "balanced", createdAt: new Date().toISOString() };
     setProfile(p);
     store.set("dao-profile", p);
     // Set active domain based on selected industry
@@ -1290,31 +1296,7 @@ export default function App() {
                 <option value="generic">Global / Other</option>
               </select>
             </label>
-            <button onClick={() => ob.name && ob.org && ob.industry && setOnboardStep(1)} disabled={!ob.name || !ob.org || !ob.industry} style={{ ...btnPrimary, width: "100%", opacity: ob.name && ob.org && ob.industry ? 1 : 0.4 }}>Continue</button>
-          </div>
-        )}
-
-        {onboardStep === 1 && (
-          <div style={{ background: BG_CARD, borderRadius: 16, padding: 32, border: `1px solid ${BORDER}` }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>One question to calibrate</h2>
-            <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 24 }}>This shapes how I communicate with you â it can be adjusted later.</p>
-            <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 24, lineHeight: 1.5 }}>When your team gives you bad news, what frustrates you more?</p>
-            {[
-              { key: "direct", label: "That they buried it", desc: "I want problems surfaced immediately, no sugarcoating" },
-              { key: "solution", label: "That they didn't come with a solution", desc: "Don't just tell me the problem â tell me what to do" },
-              { key: "balanced", label: "It depends on the situation", desc: "Give me the picture and options â I'll decide" }
-            ].map(opt => (
-              <button key={opt.key} onClick={() => setOb({...ob, style: opt.key})} style={{
-                display: "block", width: "100%", textAlign: "left", padding: "16px 20px", marginBottom: 12,
-                background: ob.style === opt.key ? `${ACCENT}15` : BG_SURFACE,
-                border: `1px solid ${ob.style === opt.key ? ACCENT : BORDER}`,
-                borderRadius: 12, cursor: "pointer", color: TEXT, transition: "all 0.2s"
-              }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{opt.label}</div>
-                <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 4 }}>{opt.desc}</div>
-              </button>
-            ))}
-            <button onClick={completeOnboarding} disabled={!ob.style} style={{ ...btnPrimary, width: "100%", marginTop: 16, opacity: ob.style ? 1 : 0.4 }}>Launch My Command Centre</button>
+            <button onClick={() => ob.name && ob.org && ob.industry && completeOnboarding()} disabled={!ob.name || !ob.org || !ob.industry} style={{ ...btnPrimary, width: "100%", opacity: ob.name && ob.org && ob.industry ? 1 : 0.4 }}>Continue</button>
           </div>
         )}
       </div>
@@ -1323,7 +1305,7 @@ export default function App() {
 
   // âââââââââââ HANDLE FILE UPLOAD âââââââââââ
   const handleFiles = async (files) => {
-    const newDatasets = [...datasets];
+    const newDatasets = [];
     for (const file of files) {
       try {
         const parsed = await parseFile(file);
@@ -1344,18 +1326,29 @@ export default function App() {
         const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
         dedupedRegistry.push(record);
         saveDatasetRegistry(dedupedRegistry);
+        // S2.2-A: purge stale scan history for re-uploaded file
+        const scanHist = JSON.parse(localStorage.getItem('dao-scan-history') || '[]');
+        const cleanedHist = scanHist
+          .map(entry => ({
+            ...entry,
+            datasetsUsed: Array.isArray(entry.datasetsUsed)
+              ? entry.datasetsUsed.filter(n => n !== record.name)
+              : entry.datasetsUsed,
+          }))
+          .filter(entry => !Array.isArray(entry.datasetsUsed) || entry.datasetsUsed.length > 0);
+        localStorage.setItem('dao-scan-history', JSON.stringify(cleanedHist));
       } catch (e) {
         console.error("Parse error:", e);
       }
     }
+    let mergedDatasets = [];
     setDatasets(prev => {
           const existingNames = new Set(newDatasets.map(d => d.name));
           const retained = prev.filter(d => !existingNames.has(d.name));
-          return [...retained, ...newDatasets];
+          mergedDatasets = [...retained, ...newDatasets];
+          return mergedDatasets;
         });
     setUploadRefreshKey(k => k + 1);
-    const summary = summarizeData(newDatasets, false);
-    localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
     return newDatasets;
   };
 
@@ -1379,6 +1372,17 @@ export default function App() {
       const dedupedRegistry = existingRegistry.filter(r => r.name !== record.name);
       dedupedRegistry.push(record);
       saveDatasetRegistry(dedupedRegistry);
+      // S2.2-A: purge stale scan history for re-uploaded file
+      const scanHist = JSON.parse(localStorage.getItem('dao-scan-history') || '[]');
+      const cleanedHist = scanHist
+        .map(entry => ({
+          ...entry,
+          datasetsUsed: Array.isArray(entry.datasetsUsed)
+            ? entry.datasetsUsed.filter(n => n !== record.name)
+            : entry.datasetsUsed,
+        }))
+        .filter(entry => !Array.isArray(entry.datasetsUsed) || entry.datasetsUsed.length > 0);
+      localStorage.setItem('dao-scan-history', JSON.stringify(cleanedHist));
     }
     setChatFiles(prev => [...prev, ...parsedFiles]);
     // Also add to global datasets
@@ -2108,6 +2112,10 @@ export default function App() {
     setScanMode("operational");
     setChangeProjects([]);
     setShowChangeForm(false);
+    localStorage.removeItem('dao-datasets-registry');
+    localStorage.removeItem('dao-scan-history');
+    localStorage.removeItem('dao-uploaded-summary');
+    localStorage.removeItem('dao-active-domain');
   };
 
   async function preloadVarianceForDueDecisions() {
@@ -2191,7 +2199,6 @@ export default function App() {
     { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
     { id: "scan", label: "Situations", icon: ScanIcon },
     { id: "journal", label: "Decision Ledger", icon: BookIcon, badge: journal.length || null },
-    { id: "track", label: "Track", icon: ClipboardIcon, badge: changeProjects.length || null },
     { id: "data", label: "Data", icon: FileIcon, badge: datasets.length || null },
   ];
 
@@ -2200,7 +2207,6 @@ export default function App() {
     chat: "/chat",
     scan: "/situations",
     journal: "/journal",
-    track: "/track",
     data: "/connect"
   };
 
@@ -2327,7 +2333,7 @@ export default function App() {
             onToastDismiss={() => setToastVisible(false)}
           >
           <Routes>
-            <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} />} />
+            <Route path="/" element={<WelcomeScreen situationCount={situationCount} singleSituationId={singleSituationId} journal={journal} profile={profile} topFindings={parsedFindings.slice(0, 3)} />} />
             <Route path="/board" element={<Navigate to="/" replace />} />
 
             <Route path="/chat" element={<Navigate to="/" replace />} />
@@ -3195,47 +3201,7 @@ export default function App() {
             </div>
           )} />
 
-          {/* âââââââ CHANGE TRACKER VIEW âââââââ */}
-            <Route path="/track" element={(
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 4px" }}>Change Tracker</h2>
-                  <p style={{ fontSize: 12, color: TEXT_DIM, margin: 0 }}>Track AI & digital transformation implementation progress</p>
-                </div>
-                <button onClick={() => setShowChangeForm(true)} style={btnPrimary}><PlusIcon size={16}/> New Project</button>
-              </div>
-              {showChangeForm && (
-                <div style={{ background: BG_CARD, borderRadius: 12, border: `1px solid ${ACCENT}40`, padding: 20, marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, marginTop: 0, marginBottom: 16 }}>New Implementation Project</h3>
-                  <label style={labelStyle}>
-                    <span style={labelText}>Project Name</span>
-                    <input value={cf.name} onChange={e => setCf({...cf, name: e.target.value})} placeholder="e.g. Decision Accountability OS Rollout" style={inputStyle}/>
-                  </label>
-                  <label style={labelStyle}>
-                    <span style={labelText}>Description</span>
-                    <input value={cf.description} onChange={e => setCf({...cf, description: e.target.value})} placeholder="e.g. Enterprise-wide AI implementation for Operations division" style={inputStyle}/>
-                  </label>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button onClick={addChangeProject} disabled={!cf.name} style={{ ...btnPrimary, opacity: cf.name ? 1 : 0.4 }}>Create Project</button>
-                    <button onClick={() => setShowChangeForm(false)} style={btnSmall}>Cancel</button>
-                  </div>
-                </div>
-              )}
-              {changeProjects.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: TEXT_DIM }}>
-                  <ClipboardIcon size={48} color={TEXT_DIM}/>
-                  <h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT, margin: "16px 0 8px" }}>No Projects Yet</h3>
-                  <p style={{ fontSize: 14, maxWidth: 360, margin: "0 auto 16px" }}>Create a project for each AI or digital transformation implementation you are rolling out. Track progress workstream by workstream with RAG status.</p>
-                  <button onClick={() => setShowChangeForm(true)} style={btnPrimary}>Create First Project</button>
-                </div>
-              ) : (
-                changeProjects.map(project => (
-                  <ChangeProjectCard key={project.id} project={project} onUpdateWorkstream={updateWorkstream}/>
-                ))
-              )}
-            </div>
-          )} />
+            <Route path="/track" element={<Navigate to="/" replace />} />
 
           {/* âââââââ BRIEF VIEW âââââââ */}
             <Route path="/brief" element={(
@@ -3319,7 +3285,7 @@ export default function App() {
 
             <Route
                 path="/situation/:id/step/:n"
-                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} onToast={showToast} />}
+                element={<StepRouter priorities={situationAssessment?.assessment?.priorities || []} findings={parsedFindings} patterns={patterns} situationSummary={situationAssessment?.assessment?.situationSummary || ''} onOptionSelect={handleOptionSelect} selectedOption={selectedOption} onConfirm={handleConfirm} onSubmitReview={handleReviewSubmit} journal={journal} activeDomain={activeDomain} profile={profile} onToast={showToast} onReset={resetAll} />}
               />
           </Routes>
           </ShellFrame>
@@ -3393,7 +3359,7 @@ const btnSmall = {
 const labelStyle = { display: "block", marginBottom: 12 };
 const labelText = { fontSize: 12, color: TEXT_DIM, display: "block", marginBottom: 4 };
 
-function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast }) {
+function StepRouter({ priorities, findings, patterns, situationSummary, onOptionSelect, selectedOption, onConfirm, onSubmitReview, journal, activeDomain, profile, onToast, onReset }) {
   const { id, n } = useParams();
   const navigate = useNavigate();
   const matched = priorities.find(p => String(p.rank) === String(id));
@@ -3455,6 +3421,6 @@ function StepRouter({ priorities, findings, patterns, situationSummary, onOption
   }
   if (n === '5') { return <StepMonitor selectedOption={selectedOption} situationSummary={situationSummary} journal={journal} findings={findings} activeDomain={activeDomain} onNext={() => navigate(`/situation/${id}/step/6`)} />; }
   if (n === '6') { return <Review journal={journal} situationSummary={situationSummary} selectedOption={selectedOption} activeDomain={activeDomain} onSubmitReview={onSubmitReview} />; }
-  if (n === '7') { return <BoardReportNarrative journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} />; }
+  if (n === '7') { return <BoardReportNarrative onReset={onReset} journal={journal} selectedOption={selectedOption} situationSummary={situationSummary} activeDomain={activeDomain} profile={profile} findings={findings} />; }
   return <div style={{ padding: 16, color: '#E2E8F0' }}>Situation step - coming soon.</div>;
 }

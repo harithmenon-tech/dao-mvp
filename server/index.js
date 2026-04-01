@@ -578,8 +578,9 @@ If the uploaded data includes a source classified as [CLASSIFIED: BILLING] and a
 - If data is insufficient to calculate the variance precisely, state the gap qualitatively and flag confidence as LOW.
 This check is additive — it does not replace the standard 5-category scan. If the cross-file check produces a finding, include it within the 3-finding cap ranked by severity.
 
+You MUST return at least one finding. Never return an empty findings array. If no significant operational issues are present, return exactly one sentinel finding using this exact shape: {"number":1,"title":"No material findings detected","evidence":"No anomalies meeting the scan threshold were identified in the uploaded data.","recurrence":"N/A","impact":"N/A","rootCause":"none","fix":"No action required.","severity":"Tier 3","confidence":"HIGH","assumptions":"Data reviewed appears within normal operating parameters","provenanceType":"uploaded_evidence"}.
 Return ONLY a valid JSON object. No markdown, no preamble, no explanation, no trailing text.
-The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":""}]}`;
+The JSON must use exactly this structure: {"findings":[{"number":1,"title":"","evidence":"","recurrence":"","impact":"","rootCause":"","fix":"","severity":"Tier 1","confidence":"HIGH","assumptions":"","provenanceType":"uploaded_evidence"}]}`;
 
 const REVENUE_SCAN_PROMPT_SERVER = (domain, currency) => `You are the Decision Accountability OS, built by 30GENS. You are a world-class decision intelligence engine.
 ${domain ? `Active domain: ${domain}` : ''}${domain === 'water' ? `
@@ -688,6 +689,16 @@ function detectCurrency(summary) {
   }
   // Hierarchy 5: no confident detection — return null
   return null;
+}
+
+function injectProvenance(str, isRevenue) {
+  if (isRevenue) return str;
+  try {
+    const parsed = JSON.parse(str);
+    if (!Array.isArray(parsed.findings)) return str;
+    parsed.findings = parsed.findings.map(f => ({ ...f, provenanceType: 'uploaded_evidence' }));
+    return JSON.stringify(parsed);
+  } catch { return str; }
 }
 
 function derivePatterns(findings) {
@@ -811,7 +822,7 @@ app.post('/api/scan', async (req, res) => {
         } catch { retryDerivedPatterns = []; }
         const scanId = `scan-${Date.now()}`;
         console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(retryClean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId} | retry: true`);
-        return res.status(200).json({ text: retryClean, patterns: retryDerivedPatterns, currency: detectedCurrency, scanId });
+        return res.status(200).json({ text: injectProvenance(retryClean, isRevenue), patterns: retryDerivedPatterns, currency: detectedCurrency, scanId });
       } catch (retryErr) {
         console.error('[/api/scan] Retry threw:', retryErr.message);
         return res.status(422).json({ error: 'scan_output_invalid', text: raw });
@@ -825,7 +836,7 @@ app.post('/api/scan', async (req, res) => {
     } catch { derivedPatterns = []; }
     const scanId = `scan-${Date.now()}`;
     console.log(`[DAO truth] /api/scan | ${new Date().toISOString()} | type: ${scanType} | findings: ${(() => { try { return JSON.parse(clean)[scanType === 'revenue' ? 'opportunities' : 'findings']?.length ?? 0; } catch { return 0; } })()} | scanId: ${scanId}`);
-    return res.status(200).json({ text: clean, patterns: derivedPatterns, currency: detectedCurrency, scanId });
+    return res.status(200).json({ text: injectProvenance(clean, isRevenue), patterns: derivedPatterns, currency: detectedCurrency, scanId });
   } catch (err) {
     console.error('[/api/scan error]', err.message, err.stack);
     return res.status(500).json({ error: err.message || 'Scan failed. Please try again.' });
@@ -1099,7 +1110,16 @@ app.post('/api/board-report', async (req, res) => {
   let browser;
   try {
     const { buildReportTemplate } = await import('./reportTemplate.js');
-    const html = buildReportTemplate(req.body);
+    const rawFindings = Array.isArray(req.body.topFindingsForReport)
+      ? req.body.topFindingsForReport
+      : [];
+    const safeFindingsForReport = rawFindings.slice(0, 3).map(f => ({
+      title:          typeof f.title          === 'string' ? f.title.slice(0, 200)          : '',
+      severity:       typeof f.severity       === 'string' ? f.severity.slice(0, 50)        : '',
+      evidence:       typeof f.evidence       === 'string' ? f.evidence.slice(0, 500)       : '',
+      provenanceType: typeof f.provenanceType === 'string' ? f.provenanceType.slice(0, 100) : 'uploaded_evidence',
+    }));
+    const html = buildReportTemplate({ ...req.body, topFindingsForReport: safeFindingsForReport });
 
     if (process.env.NODE_ENV === 'production' || process.platform === 'linux') {
       // Production / Railway / Linux: use puppeteer-core + @sparticuz/chromium
