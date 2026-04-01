@@ -1110,7 +1110,16 @@ app.post('/api/board-report', async (req, res) => {
   let browser;
   try {
     const { buildReportTemplate } = await import('./reportTemplate.js');
-    const html = buildReportTemplate(req.body);
+    const rawFindings = Array.isArray(req.body.topFindingsForReport)
+      ? req.body.topFindingsForReport
+      : [];
+    const safeFindingsForReport = rawFindings.slice(0, 3).map(f => ({
+      title:          typeof f.title          === 'string' ? f.title.slice(0, 200)          : '',
+      severity:       typeof f.severity       === 'string' ? f.severity.slice(0, 50)        : '',
+      evidence:       typeof f.evidence       === 'string' ? f.evidence.slice(0, 500)       : '',
+      provenanceType: typeof f.provenanceType === 'string' ? f.provenanceType.slice(0, 100) : 'uploaded_evidence',
+    }));
+    const html = buildReportTemplate({ ...req.body, topFindingsForReport: safeFindingsForReport });
 
     if (process.env.NODE_ENV === 'production' || process.platform === 'linux') {
       // Production / Railway / Linux: use puppeteer-core + @sparticuz/chromium
@@ -1172,3 +1181,4 @@ app.listen(PORT, () => {
   }
   console.log();
 });
+                                                                                                                                                                                                                    

@@ -163,6 +163,7 @@ export default function BoardReportNarrative({ onReset,
   selectedOption,
   situationSummary,
   activeDomain,
+  findings = [],
   profile,
 }) {
   const navigate       = useNavigate();
@@ -251,6 +252,14 @@ export default function BoardReportNarrative({ onReset,
         generatedDate:     new Date().toLocaleDateString('en-GB', {
                              day: 'numeric', month: 'long', year: 'numeric',
                            }),
+        topFindingsForReport: Array.isArray(findings) && findings.length > 0
+          ? findings.slice(0, 3).map(f => ({
+              title:          f.title          || '',
+              severity:       f.severity       || '',
+              evidence:       f.evidence       || '',
+              provenanceType: f.provenanceType || 'uploaded_evidence',
+            }))
+          : [],
       };
 
       const response = await fetch('/api/board-report', {
