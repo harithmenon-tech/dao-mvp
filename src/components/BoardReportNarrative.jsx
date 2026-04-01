@@ -163,6 +163,7 @@ export default function BoardReportNarrative({
   selectedOption,
   situationSummary,
   activeDomain,
+  profile,
 }) {
   const navigate       = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -240,8 +241,8 @@ export default function BoardReportNarrative({
         financialFigure:   '',  // per CTO ruling — no derivation
         currency,
         domain:            domainObj?.label || activeDomain || '',
-        orgName:           '',  // profile not in scope; harmless empty
-        generatedBy:       '',  // profile not in scope; harmless empty
+        orgName:           profile?.org  || '',
+        generatedBy:       profile?.name || '',
         generatedDate:     new Date().toLocaleDateString('en-GB', {
                              day: 'numeric', month: 'long', year: 'numeric',
                            }),
