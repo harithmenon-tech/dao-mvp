@@ -1202,6 +1202,12 @@ export default function App() {
         return { name: d.name, type: d.type, rowCount: d.totalRows || d.rowCount || 0 };
       })
     );
+    if (datasets.length) {
+      const uploadedSummary = summarizeData(datasets, false);
+      localStorage.setItem('dao-uploaded-summary', uploadedSummary.slice(0, 2000));
+    } else {
+      localStorage.removeItem('dao-uploaded-summary');
+    }
   }, [datasets]);
 
   // Auto-scroll chat
@@ -1343,8 +1349,6 @@ export default function App() {
           return mergedDatasets;
         });
     setUploadRefreshKey(k => k + 1);
-    const summary = summarizeData(mergedDatasets, false);
-    localStorage.setItem('dao-uploaded-summary', summary.slice(0, 800));
     return newDatasets;
   };
 
