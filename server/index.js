@@ -165,7 +165,7 @@ Then provide:
 Respond in valid JSON only. No preamble, no markdown fences.
 Schema: { options: [{title,description,tradeoff}], recommendation: string, confidence: string }`;
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -200,7 +200,7 @@ app.post('/api/variance', async (req, res) => {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 512,
       system: 'You are a decision intelligence analyst. Assess whether this decision produced Better, Same, or Worse results than intended. Return ONLY valid JSON. No preamble, no markdown, no backticks.',
       messages: [{ role: 'user', content: userPrompt }],
@@ -253,7 +253,7 @@ app.post('/api/decision-health', async (req, res) => {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: 'You are a decision health analyst. Healthy=on track or completed well. Watch=early signs of underperformance. At Risk=contradicted by operational data. Return ONLY valid JSON. No preamble, no markdown, no backticks.',
       messages: [{ role: 'user', content: userPrompt }],
@@ -365,7 +365,7 @@ app.post('/api/situation', async (req, res) => {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       temperature: 0,
       system: 'You are a strategic business advisor. Always respond with valid JSON only.',
@@ -457,7 +457,7 @@ Provide exactly 3 keyFindings and 3 recommendedActions. Return only valid JSON.`
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: 'You are a strategic executive advisor. Always respond with valid JSON only.',
       messages: [{ role: 'user', content: prompt }]
@@ -508,7 +508,7 @@ Today's date is ${new Date().toISOString().slice(0, 10)}.`;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: 'You are a decision risk analyst. Respond only with a valid JSON array, no markdown, no preamble.',
       messages: [{ role: 'user', content: prompt }],
@@ -779,7 +779,7 @@ app.post('/api/scan', async (req, res) => {
     const client = new Anthropic({ apiKey: KEY });
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       temperature: 0,
       system: systemPrompt,
@@ -802,7 +802,7 @@ app.post('/api/scan', async (req, res) => {
       console.warn('[/api/scan] Attempt 1 failed validation — retrying once');
       try {
         const retry = await client.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2000,
           temperature: 0,
           system: systemPrompt,
@@ -926,7 +926,7 @@ After your CEO-ready answer, you must always append one final standalone line in
       ? contextBlock + '\n\n[CEO QUESTION]\n' + message
       : message;
     const apiMessage = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       temperature: 0,
       system: chiefSystemPrompt,
